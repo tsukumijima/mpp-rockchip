@@ -1,23 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 OR MIT */
 /*
- * Copyright (C) 2016 The FFmpeg project
- * Copyright (c) 2016 Rockchip Electronics Co., Ltd.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * Copyright (c) 2015 Rockchip Electronics Co., Ltd.
  */
 
 #include <stdlib.h>
+
 #include <string.h>
 
 #include "mpp_env.h"
@@ -28,24 +15,10 @@
 #include "mpp_packet_impl.h"
 #include "mpp_compat_impl.h"
 
-#include "vp9data.h"
 #include "vp9d_codec.h"
 #include "vp9d_parser.h"
 #include "mpp_frame_impl.h"
 
-/**
- * Clip a signed integer into the -(2^p),(2^p-1) range.
- * @param  a value to clip
- * @param  p bit position to clip at
- * @return clipped value
- */
-static   RK_U32 av_clip_uintp2(RK_S32 a, RK_S32 p)
-{
-    if (a & ~((1 << p) - 1)) return -a >> 31 & ((1 << p) - 1);
-    else                   return  a;
-}
-
-#define VP9_SYNCCODE 0x498342
 //#define dump
 #ifdef dump
 static FILE *vp9_p_fp = NULL;
@@ -55,51 +28,9 @@ static RK_S32 dec_num = 0;
 static RK_S32 count = 0;
 #endif
 
-#ifndef FASTDIV
-#   define FASTDIV(a,b) ((RK_U32)((((RK_U64)a) * vpx_inverse[b]) >> 32))
-#endif /* FASTDIV */
-
-/* a*inverse[b]>>32 == a/b for all 0<=a<=16909558 && 2<=b<=256
- * for a>16909558, is an overestimate by less than 1 part in 1<<24 */
-const RK_U32 vpx_inverse[257] = {
-    0, 4294967295U, 2147483648U, 1431655766, 1073741824,  858993460,  715827883,  613566757,
-    536870912,  477218589,  429496730,  390451573,  357913942,  330382100,  306783379,  286331154,
-    268435456,  252645136,  238609295,  226050911,  214748365,  204522253,  195225787,  186737709,
-    178956971,  171798692,  165191050,  159072863,  153391690,  148102321,  143165577,  138547333,
-    134217728,  130150525,  126322568,  122713352,  119304648,  116080198,  113025456,  110127367,
-    107374183,  104755300,  102261127,   99882961,   97612894,   95443718,   93368855,   91382283,
-    89478486,   87652394,   85899346,   84215046,   82595525,   81037119,   79536432,   78090315,
-    76695845,   75350304,   74051161,   72796056,   71582789,   70409300,   69273667,   68174085,
-    67108864,   66076420,   65075263,   64103990,   63161284,   62245903,   61356676,   60492498,
-    59652324,   58835169,   58040099,   57266231,   56512728,   55778797,   55063684,   54366675,
-    53687092,   53024288,   52377650,   51746594,   51130564,   50529028,   49941481,   49367441,
-    48806447,   48258060,   47721859,   47197443,   46684428,   46182445,   45691142,   45210183,
-    44739243,   44278014,   43826197,   43383509,   42949673,   42524429,   42107523,   41698712,
-    41297763,   40904451,   40518560,   40139882,   39768216,   39403370,   39045158,   38693400,
-    38347923,   38008561,   37675152,   37347542,   37025581,   36709123,   36398028,   36092163,
-    35791395,   35495598,   35204650,   34918434,   34636834,   34359739,   34087043,   33818641,
-    33554432,   33294321,   33038210,   32786010,   32537632,   32292988,   32051995,   31814573,
-    31580642,   31350127,   31122952,   30899046,   30678338,   30460761,   30246249,   30034737,
-    29826162,   29620465,   29417585,   29217465,   29020050,   28825284,   28633116,   28443493,
-    28256364,   28071682,   27889399,   27709467,   27531842,   27356480,   27183338,   27012373,
-    26843546,   26676816,   26512144,   26349493,   26188825,   26030105,   25873297,   25718368,
-    25565282,   25414008,   25264514,   25116768,   24970741,   24826401,   24683721,   24542671,
-    24403224,   24265352,   24129030,   23994231,   23860930,   23729102,   23598722,   23469767,
-    23342214,   23216040,   23091223,   22967740,   22845571,   22724695,   22605092,   22486740,
-    22369622,   22253717,   22139007,   22025474,   21913099,   21801865,   21691755,   21582751,
-    21474837,   21367997,   21262215,   21157475,   21053762,   20951060,   20849356,   20748635,
-    20648882,   20550083,   20452226,   20355296,   20259280,   20164166,   20069941,   19976593,
-    19884108,   19792477,   19701685,   19611723,   19522579,   19434242,   19346700,   19259944,
-    19173962,   19088744,   19004281,   18920561,   18837576,   18755316,   18673771,   18592933,
-    18512791,   18433337,   18354562,   18276457,   18199014,   18122225,   18046082,   17970575,
-    17895698,   17821442,   17747799,   17674763,   17602325,   17530479,   17459217,   17388532,
-    17318417,   17248865,   17179870,   17111424,   17043522,   16976156,   16909321,   16843010,
-    16777216
-};
-
-static void split_parse_frame(SplitContext_t *ctx, RK_U8 *buf, RK_S32 size)
+static void split_parse_frame(VP9SplitCtx *ctx, RK_U8 *buf, RK_S32 size)
 {
-    VP9ParseContext *s = (VP9ParseContext *)ctx->priv_data;
+    VP9ParseCtx *s = (VP9ParseCtx *)ctx->priv_data;
 
     if (buf[0] & 0x4) {
         ctx->key_frame = 0;
@@ -119,11 +50,10 @@ static void split_parse_frame(SplitContext_t *ctx, RK_U8 *buf, RK_S32 size)
     (void)size;
 }
 
-RK_S32 vp9d_split_frame(SplitContext_t *ctx,
-                        RK_U8 **out_data, RK_S32 *out_size,
+RK_S32 vp9d_split_frame(VP9SplitCtx *ctx, RK_U8 **out_data, RK_S32 *out_size,
                         RK_U8 *data, RK_S32 size)
 {
-    VP9ParseContext *s = (VP9ParseContext *)ctx->priv_data;
+    VP9ParseCtx *s = (VP9ParseCtx *)ctx->priv_data;
     RK_S32 full_size = size;
     RK_S32 marker;
 
@@ -139,7 +69,7 @@ RK_S32 vp9d_split_frame(SplitContext_t *ctx,
         *out_size = s->size[--s->n_frames];
         split_parse_frame(ctx, *out_data, *out_size);
 
-        return s->n_frames > 0 ? *out_size : size /* i.e. include idx tail */;
+        return s->n_frames > 0 ? *out_size : size;
     }
 
     marker = data[size - 1];
@@ -193,14 +123,11 @@ RK_S32 vp9d_split_frame(SplitContext_t *ctx,
     return size;
 }
 
-MPP_RET vp9d_get_frame_stream(Vp9CodecContext *ctx, RK_U8 *buf, RK_S32 length)
+MPP_RET vp9d_get_frame_stream(Vp9DecCtx *ctx, RK_U8 *buf, RK_S32 length)
 {
+    RK_U8 *data = (RK_U8 *)mpp_packet_get_data(ctx->pkt);
+    RK_S32 size = (RK_S32)mpp_packet_get_size(ctx->pkt);
     RK_S32 buff_size = 0;
-    RK_U8 *data = NULL;
-    RK_S32 size = 0;
-
-    data = (RK_U8 *)mpp_packet_get_data(ctx->pkt);
-    size = (RK_S32)mpp_packet_get_size(ctx->pkt);
 
     if (length > size) {
         mpp_free(data);
@@ -217,18 +144,18 @@ MPP_RET vp9d_get_frame_stream(Vp9CodecContext *ctx, RK_U8 *buf, RK_S32 length)
     return MPP_OK;
 }
 
-MPP_RET vp9d_split_init(Vp9CodecContext *vp9_ctx)
+MPP_RET vp9d_split_init(Vp9DecCtx *vp9_ctx)
 {
-    SplitContext_t *ps;
-    VP9ParseContext *sc;
+    VP9SplitCtx *ps;
+    VP9ParseCtx *sc;
 
-    ps = (SplitContext_t *)mpp_calloc(SplitContext_t, 1);
+    ps = (VP9SplitCtx *)mpp_calloc(VP9SplitCtx, 1);
     if (!ps) {
         mpp_err("vp9 parser malloc fail");
         return MPP_ERR_NOMEM;
     }
 
-    sc = (VP9ParseContext *)mpp_calloc(VP9ParseContext, 1);
+    sc = (VP9ParseCtx *)mpp_calloc(VP9ParseCtx, 1);
     if (!sc) {
         mpp_err("vp9 parser context malloc fail");
         mpp_free(ps);
@@ -241,9 +168,9 @@ MPP_RET vp9d_split_init(Vp9CodecContext *vp9_ctx)
     return MPP_OK;
 }
 
-MPP_RET vp9d_split_deinit(Vp9CodecContext *vp9_ctx)
+MPP_RET vp9d_split_deinit(Vp9DecCtx *vp9_ctx)
 {
-    SplitContext_t *ps = (SplitContext_t *)vp9_ctx->priv_data2;
+    VP9SplitCtx *ps = (VP9SplitCtx *)vp9_ctx->priv_data2;
 
     if (ps)
         MPP_FREE(ps->priv_data);
@@ -252,7 +179,7 @@ MPP_RET vp9d_split_deinit(Vp9CodecContext *vp9_ctx)
     return MPP_OK;
 }
 
-static RK_S32 vp9_ref_frame(Vp9CodecContext *ctx, VP9Frame *dst, VP9Frame *src)
+static RK_S32 vp9_ref_frame(Vp9DecCtx *ctx, VP9Frame *dst, VP9Frame *src)
 {
     VP9Context *s = ctx->priv_data;
     MppFrameImpl *impl_frm = (MppFrameImpl *)dst->f;
@@ -263,7 +190,7 @@ static RK_S32 vp9_ref_frame(Vp9CodecContext *ctx, VP9Frame *dst, VP9Frame *src)
     }
     dst->slot_index = src->slot_index;
     dst->ref = src->ref;
-    dst->ref->invisible = src->ref->invisible;
+    dst->ref->show_frame_flag = src->ref->show_frame_flag;
     dst->ref->ref_count++;
     vp9d_dbg(VP9D_DBG_REF, "get prop slot frame %p  count %d", dst->f, dst->ref->ref_count);
     mpp_buf_slot_get_prop(s->slots, src->slot_index, SLOT_FRAME, &dst->f);
@@ -281,12 +208,12 @@ static void vp9_unref_frame( VP9Context *s, VP9Frame *f)
     f->ref->ref_count--;
     if (!f->ref->ref_count) {
         if (f->slot_index <= 0x7f) {
-            if (f->ref->invisible && !f->ref->is_output) {
+            if (f->ref->show_frame_flag && !f->ref->is_output) {
                 MppBuffer framebuf = NULL;
 
                 mpp_buf_slot_get_prop(s->slots, f->slot_index, SLOT_BUFFER, &framebuf);
                 mpp_buffer_put(framebuf);
-                f->ref->invisible = 0;
+                f->ref->show_frame_flag = 0;
             }
             mpp_buf_slot_clr_flag(s->slots, f->slot_index, SLOT_CODEC_USE);
         }
@@ -298,10 +225,10 @@ static void vp9_unref_frame( VP9Context *s, VP9Frame *f)
     return;
 }
 
-
-static  RK_S32 vp9_frame_free(VP9Context *s)
+static RK_S32 vp9_frame_free(VP9Context *s)
 {
     RK_S32 i;
+
     for (i = 0; i < 3; i++) {
         if (s->frames[i].ref) {
             vp9_unref_frame(s, &s->frames[i]);
@@ -320,6 +247,7 @@ static  RK_S32 vp9_frame_free(VP9Context *s)
 static RK_S32 vp9_frame_init(VP9Context *s)
 {
     RK_S32 i;
+
     for (i = 0; i < 3; i++) {
         mpp_frame_init(&s->frames[i].f);
         if (!s->frames[i].f) {
@@ -341,17 +269,20 @@ static RK_S32 vp9_frame_init(VP9Context *s)
         s->refs[i].slot_index = 0x7f;
         s->refs[i].ref = NULL;
     }
+
     return MPP_OK;
 }
 
-MPP_RET vp9d_parser_init(Vp9CodecContext *vp9_ctx, ParserCfg *init)
+MPP_RET vp9d_parser_init(Vp9DecCtx *vp9_ctx, ParserCfg *init)
 {
     VP9Context *s = mpp_calloc(VP9Context, 1);
+
     vp9_ctx->priv_data = (void*)s;
     if (!vp9_ctx->priv_data) {
         mpp_err("vp9 codec context malloc fail");
         return MPP_ERR_NOMEM;
     }
+
     vp9_frame_init(s);
     s->last_bpp = 0;
     s->filter.sharpness = -1;
@@ -371,9 +302,10 @@ MPP_RET vp9d_parser_init(Vp9CodecContext *vp9_ctx, ParserCfg *init)
     return MPP_OK;
 }
 
-MPP_RET vp9d_parser_deinit(Vp9CodecContext *vp9_ctx)
+MPP_RET vp9d_parser_deinit(Vp9DecCtx *vp9_ctx)
 {
     VP9Context *s = vp9_ctx->priv_data;
+
     vp9_frame_free(s);
     mpp_free(s->c_b);
     s->c_b_size = 0;
@@ -381,9 +313,10 @@ MPP_RET vp9d_parser_deinit(Vp9CodecContext *vp9_ctx)
     return MPP_OK;
 }
 
-static RK_S32 vp9_alloc_frame(Vp9CodecContext *ctx, VP9Frame *frame)
+static RK_S32 vp9_alloc_frame(Vp9DecCtx *ctx, VP9Frame *frame)
 {
     VP9Context *s = ctx->priv_data;
+
     mpp_frame_set_width(frame->f, ctx->width);
     mpp_frame_set_height(frame->f, ctx->height);
 
@@ -428,29 +361,15 @@ static RK_S32 vp9_alloc_frame(Vp9CodecContext *ctx, VP9Frame *frame)
     mpp_buf_slot_set_prop(s->slots, frame->slot_index, SLOT_FRAME, frame->f);
     mpp_buf_slot_set_flag(s->slots, frame->slot_index, SLOT_CODEC_USE);
     mpp_buf_slot_set_flag(s->slots, frame->slot_index, SLOT_HAL_OUTPUT);
-    frame->ref = mpp_calloc(RefInfo, 1);
+    frame->ref = mpp_calloc(VP9RefInfo, 1);
     frame->ref->ref_count++;
-    frame->ref->invisible = s->invisible;
+    frame->ref->show_frame_flag = s->show_frame_flag;
     frame->ref->is_output = 0;
 
     return 0;
 }
 
-
-
-// for some reason the sign bit is at the end, not the start, of a bit sequence
-static RK_S32 get_sbits_inv(BitReadCtx_t *gb, RK_S32 n)
-{
-    RK_S32 value;
-    RK_S32 v;
-    READ_BITS(gb, n, &v);
-    READ_ONEBIT(gb, &value);
-    return (value != 0) ? -v : v;
-__BITREAD_ERR:
-    return MPP_ERR_STREAM;
-}
-
-static RK_S32 update_size(Vp9CodecContext *ctx, RK_S32 w, RK_S32 h, RK_S32 fmt)
+static RK_S32 update_size(Vp9DecCtx *ctx, RK_S32 w, RK_S32 h, RK_S32 fmt)
 {
     VP9Context *s = ctx->priv_data;
 
@@ -473,216 +392,72 @@ static RK_S32 update_size(Vp9CodecContext *ctx, RK_S32 w, RK_S32 h, RK_S32 fmt)
     return 0;
 }
 
-static RK_S32 inv_recenter_nonneg(RK_S32 v, RK_S32 m)
+static inline RK_S32 read_synccode(BitReadCtx_t *gb)
 {
-    return v > 2 * m ? v : v & 1 ? m - ((v + 1) >> 1) : m + (v >> 1);
-}
+    RK_S32 code0, code1, code2;
 
-// differential forward probability updates
-static RK_S32 update_prob(VpxRangeCoder *c, RK_S32 p, RK_U8 *delta)
-{
-    static const RK_S32 inv_map_table[255] = {
-        7,  20,  33,  46,  59,  72,  85,  98, 111, 124, 137, 150, 163, 176,
-        189, 202, 215, 228, 241, 254,   1,   2,   3,   4,   5,   6,   8,   9,
-        10,  11,  12,  13,  14,  15,  16,  17,  18,  19,  21,  22,  23,  24,
-        25,  26,  27,  28,  29,  30,  31,  32,  34,  35,  36,  37,  38,  39,
-        40,  41,  42,  43,  44,  45,  47,  48,  49,  50,  51,  52,  53,  54,
-        55,  56,  57,  58,  60,  61,  62,  63,  64,  65,  66,  67,  68,  69,
-        70,  71,  73,  74,  75,  76,  77,  78,  79,  80,  81,  82,  83,  84,
-        86,  87,  88,  89,  90,  91,  92,  93,  94,  95,  96,  97,  99, 100,
-        101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 112, 113, 114, 115,
-        116, 117, 118, 119, 120, 121, 122, 123, 125, 126, 127, 128, 129, 130,
-        131, 132, 133, 134, 135, 136, 138, 139, 140, 141, 142, 143, 144, 145,
-        146, 147, 148, 149, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160,
-        161, 162, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175,
-        177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 190, 191,
-        192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 203, 204, 205, 206,
-        207, 208, 209, 210, 211, 212, 213, 214, 216, 217, 218, 219, 220, 221,
-        222, 223, 224, 225, 226, 227, 229, 230, 231, 232, 233, 234, 235, 236,
-        237, 238, 239, 240, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251,
-        252, 253, 253,
-    };
-    RK_S32 d;
-
-    /* This code is trying to do a differential probability update. For a
-     * current probability A in the range [1, 255], the difference to a new
-     * probability of any value can be expressed differentially as 1-A,255-A
-     * where some part of this (absolute range) exists both in positive as
-     * well as the negative part, whereas another part only exists in one
-     * half. We're trying to code this shared part differentially, i.e.
-     * times two where the value of the lowest bit specifies the sign, and
-     * the single part is then coded on top of this. This absolute difference
-     * then again has a value of [0,254], but a bigger value in this range
-     * indicates that we're further away from the original value A, so we
-     * can code this as a VLC code, since higher values are increasingly
-     * unlikely. The first 20 values in inv_map_table[] allow 'cheap, rough'
-     * updates vs. the 'fine, exact' updates further down the range, which
-     * adds one extra dimension to this differential update model. */
-
-    if (!vpx_rac_get(c)) {
-        d = vpx_rac_get_uint(c, 4) + 0;
-    } else if (!vpx_rac_get(c)) {
-        d = vpx_rac_get_uint(c, 4) + 16;
-    } else if (!vpx_rac_get(c)) {
-        d = vpx_rac_get_uint(c, 5) + 32;
-    } else {
-        d = vpx_rac_get_uint(c, 7);
-        if (d >= 65)
-            d = (d << 1) - 65 + vpx_rac_get(c);
-        d += 64;
-        //av_assert2(d < FF_ARRAY_ELEMS(inv_map_table));
-    }
-    *delta = d;
-    return p <= 128 ? 1 + inv_recenter_nonneg(inv_map_table[d], p - 1) :
-           255 - inv_recenter_nonneg(inv_map_table[d], 255 - p);
-}
-
-static RK_S32 mpp_get_bit1(BitReadCtx_t *gb)
-{
-    RK_S32 value;
-    READ_ONEBIT(gb, &value);
-    return value;
+    READ_BITS(gb, 8, &code0); // sync code0
+    READ_BITS(gb, 8, &code1); // sync code1
+    READ_BITS(gb, 8, &code2); // sync code2
+    return ((code0 == 0x49) && (code1 == 0x83) && (code2 == 0x42));
 __BITREAD_ERR:
     return 0;
 }
 
-static RK_S32 mpp_get_bits(BitReadCtx_t *gb, RK_S32 num_bit)
-{
-    RK_S32 value;
-    READ_BITS(gb, num_bit, &value);
-    return value;
-__BITREAD_ERR:
-    return 0;
-}
-
-static RK_S32 read_colorspace_details(Vp9CodecContext *ctx)
-{
-    static const MppFrameColorSpace colorspaces[8] = {
-        MPP_FRAME_SPC_UNSPECIFIED, MPP_FRAME_SPC_BT470BG, MPP_FRAME_SPC_BT709, MPP_FRAME_SPC_SMPTE170M,
-        MPP_FRAME_SPC_SMPTE240M, MPP_FRAME_SPC_BT2020_NCL, MPP_FRAME_SPC_RESERVED, MPP_FRAME_SPC_RGB,
-    };
-    VP9Context *s = ctx->priv_data;
-    RK_S32 res;
-    RK_S32 bits = ctx->profile <= 1 ? 0 : 1 + mpp_get_bit1(&s->gb); // 0:8, 1:10, 2:12
-
-    vp9d_dbg(VP9D_DBG_HEADER, "bit_depth %d", 8 + bits * 2);
-    s->bpp_index = bits;
-    s->bpp = 8 + bits * 2;
-    s->bytesperpixel = (7 + s->bpp) >> 3;
-    ctx->colorspace = colorspaces[mpp_get_bits(&s->gb, 3)];
-    vp9d_dbg(VP9D_DBG_HEADER, "color_space %d", ctx->colorspace);
-    if (ctx->colorspace == MPP_FRAME_SPC_RGB) { // RGB = profile 1
-
-        {
-            mpp_err("RGB not supported in profile %d\n", ctx->profile);
-            return MPP_ERR_STREAM;
-        }
-    } else {
-        static const RK_S32 pix_fmt_for_ss[3][2 /* v */][2 /* h */] = {
-            {   { -1, MPP_FMT_YUV422SP },
-                { -1, MPP_FMT_YUV420SP }
-            },
-            {   { -1, MPP_FMT_YUV422SP_10BIT},
-                { -1, MPP_FMT_YUV420SP_10BIT}
-            },
-            {   { -1, -1 },
-                { -1, -1 }
-            }
-        };
-        ctx->color_range = (mpp_get_bit1(&s->gb) != 0) ? MPP_FRAME_RANGE_JPEG : MPP_FRAME_RANGE_MPEG;
-        vp9d_dbg(VP9D_DBG_HEADER, "color_range %d", ctx->color_range);
-        if (ctx->profile & 1) {
-            s->ss_h = mpp_get_bit1(&s->gb);
-            vp9d_dbg(VP9D_DBG_HEADER, "subsampling_x %d", s->ss_h);
-            s->ss_v = mpp_get_bit1(&s->gb);
-            vp9d_dbg(VP9D_DBG_HEADER, "subsampling_y %d", s->ss_v);
-            s->extra_plane = 0;
-            res = pix_fmt_for_ss[bits][s->ss_v][s->ss_h];
-            if (res == MPP_FMT_YUV420SP || res < 0) {
-                mpp_err("YUV FMT %d not supported in profile %d\n", res, ctx->profile);
-                return MPP_ERR_STREAM;
-            } else if (mpp_get_bit1(&s->gb)) {
-                s->extra_plane = 1;
-                vp9d_dbg(VP9D_DBG_HEADER, "has_extra_plane 1");
-                mpp_err("Profile %d color details reserved bit set\n", ctx->profile);
-                return  MPP_ERR_STREAM;
-            }
-        } else {
-            s->extra_plane = 0;
-            s->ss_h = s->ss_v = 1;
-            res = pix_fmt_for_ss[bits][1][1];
-        }
-    }
-
-    return res;
-}
-
-static RK_S32 decode012(BitReadCtx_t *gb)
-{
-    RK_S32 n;
-    n = mpp_get_bit1(gb);
-    if (n == 0)
-        return 0;
-    else
-        return mpp_get_bit1(gb) + 1;
-}
-
-static RK_S32 decode_parser_header(Vp9CodecContext *ctx,
-                                   const RK_U8 *data, RK_S32 size, RK_S32 *refo)
+static RK_S32 read_uncompressed_header(Vp9DecCtx *ctx, const RK_U8 *data, RK_S32 size,
+                                       RK_S32 *refo)
 {
     VP9Context *s = ctx->priv_data;
-    RK_S32 c, i, j, k, l, m, n, max, size2, res, sharp;
-    RK_U32 w, h;
     RK_S32 fmt = ctx->pix_fmt;
-    RK_S32 last_invisible;
-    const RK_U8 *data2;
-
-#ifdef dump
-    char filename[20] = "data/acoef";
-    if (vp9_p_fp2 != NULL) {
-        fclose(vp9_p_fp2);
-
-    }
-    sprintf(&filename[10], "%d.bin", dec_num);
-    vp9_p_fp2 = fopen(filename, "wb");
-#endif
+    BitReadCtx_t *gb = &s->gb;
+    RK_S32 i, j, k, l, m, n;
+    RK_S32 w, h;
+    RK_S32 val;
 
     /* general header */
-    mpp_set_bitread_ctx(&s->gb, (RK_U8*)data, size);
-    if (mpp_get_bits(&s->gb, 2) != 0x2) { // frame marker
+    mpp_set_bitread_ctx(gb, (RK_U8*)data, size);
+
+#define VP9_FRAME_MARKER 0x2
+    READ_BITS(gb, 2, &val); // frame marker
+    if (val != VP9_FRAME_MARKER) {
         mpp_err("Invalid frame marker\n");
         return MPP_ERR_STREAM;
     }
-
-    ctx->profile  = mpp_get_bit1(&s->gb);
-    ctx->profile |= mpp_get_bit1(&s->gb) << 1;
-
-    if (ctx->profile == 3) ctx->profile += mpp_get_bit1(&s->gb);
-    if (ctx->profile > 3) {
+    // read profile
+    READ_ONEBIT(gb, &val);
+    ctx->profile = val;
+    READ_ONEBIT(gb, &val);
+    ctx->profile |= val << 1;
+    if (ctx->profile > 2) {
+        READ_ONEBIT(gb, &val);
+        ctx->profile += val;
+    }
+    if (ctx->profile != VP9_PROFILE_0 && ctx->profile != VP9_PROFILE_2) {
         mpp_err("Profile %d is not yet supported\n", ctx->profile);
         return MPP_ERR_STREAM;
     }
-
     vp9d_dbg(VP9D_DBG_HEADER, "profile %d", ctx->profile);
-    s->show_existing_frame = mpp_get_bit1(&s->gb);
-    vp9d_dbg(VP9D_DBG_HEADER, "show_existing_frame %d", s->show_existing_frame);
 
+    READ_ONEBIT(gb, &s->show_existing_frame);
+    vp9d_dbg(VP9D_DBG_HEADER, "show_existing_frame %d", s->show_existing_frame);
     if (s->show_existing_frame) {
-        *refo = mpp_get_bits(&s->gb, 3);
+        READ_BITS(gb, 3, refo);
         vp9d_dbg(VP9D_DBG_HEADER, "frame_to_show %d", *refo);
         return 0;
     }
 
-    s->last_keyframe  = s->keyframe;
-    s->keyframe       = !mpp_get_bit1(&s->gb);
-    vp9d_dbg(VP9D_DBG_HEADER, "frame_type %d", s->keyframe);
-    last_invisible    = s->invisible;
-    s->invisible      = !mpp_get_bit1(&s->gb);
-    vp9d_dbg(VP9D_DBG_HEADER, "show_frame_flag %d", s->invisible);
-    s->errorres       = mpp_get_bit1(&s->gb);
-    vp9d_dbg(VP9D_DBG_HEADER, "error_resilient_mode %d", s->errorres);
-    s->use_last_frame_mvs = !s->errorres && !last_invisible;
-    s->got_keyframes += (s->keyframe != 0) ? 1 : 0;
+    s->last_keyframe = s->keyframe;
+    READ_ONEBIT(gb, &val);
+    s->keyframe = !val;
+    vp9d_dbg(VP9D_DBG_HEADER, "keyframe %d", s->keyframe);
+    RK_S32 last_invisible = s->show_frame_flag;
+    READ_ONEBIT(gb, &val);
+    s->show_frame_flag = !val;
+    vp9d_dbg(VP9D_DBG_HEADER, "show_frame_flag %d", s->show_frame_flag);
+    READ_ONEBIT(gb, &s->error_res_mode);
+    vp9d_dbg(VP9D_DBG_HEADER, "error_resilient_mode %d", s->error_res_mode);
+    s->use_last_frame_mvs = !s->error_res_mode && !last_invisible;
+    s->got_keyframes += s->keyframe ? 1 : 0;
     vp9d_dbg(VP9D_DBG_HEADER, "keyframe=%d, intraonly=%d, got_keyframes=%d\n",
              s->keyframe, s->intraonly, s->got_keyframes);
 
@@ -691,151 +466,168 @@ static RK_S32 decode_parser_header(Vp9CodecContext *ctx,
         return MPP_ERR_STREAM;
     }
 
-    /* set mvscale=16 default */
+    /* set mvscale default */
     for (i = 0; i < 3; i++) {
         s->mvscale[i][0] = 16;
         s->mvscale[i][1] = 16;
     }
 
     if (s->keyframe) {
-        if (mpp_get_bits(&s->gb, 24) != VP9_SYNCCODE) { // synccode
+        if (!read_synccode(gb)) {
             mpp_err("Invalid sync code\n");
             return MPP_ERR_STREAM;
         }
+        // read bitdepth colorspace sampling
+        {
+            RK_S32 bits = 0; // 0:8, 1:10, 2:12
+            if (ctx->profile == VP9_PROFILE_2) {
+                READ_ONEBIT(gb, &bits);
+                bits += 1;
+            }
+            vp9d_dbg(VP9D_DBG_HEADER, "bit_depth %d", 8 + bits * 2);
+            s->bpp_index = bits;
+            s->bpp = 8 + bits * 2;
+            s->bytesperpixel = (7 + s->bpp) >> 3;
+            READ_BITS(gb, 3, &ctx->colorspace);
+            vp9d_dbg(VP9D_DBG_HEADER, "color_space %d", ctx->colorspace);
+            if (ctx->colorspace == 7) { // RGB = profile 1 VP9_CS_SRGB
+                mpp_err("RGB not supported in profile %d\n", ctx->profile);
+                return MPP_ERR_STREAM;
+            } else { // profile 0/2
+                READ_ONEBIT(gb, &val);
+                ctx->color_range = val ? MPP_FRAME_RANGE_JPEG : MPP_FRAME_RANGE_MPEG;
+                vp9d_dbg(VP9D_DBG_HEADER, "color_range %d", ctx->color_range);
+                s->extra_plane = 0;
+                s->subsampling_x = s->subsampling_y = 1;
+            }
+        }
 
-        if ((fmt = read_colorspace_details(ctx)) < 0)
-            return fmt;
-        // for profile 1, here follows the subsampling bits
-        s->refreshrefmask = 0xff;
-        w = mpp_get_bits(&s->gb, 16) + 1;
+        s->refresh_frame_flags = 0xff;
+        READ_BITS(gb, 16, &w);
+        w += 1;
         vp9d_dbg(VP9D_DBG_HEADER, "frame_size_width %d", w);
-        h = mpp_get_bits(&s->gb, 16) + 1;
+        READ_BITS(gb, 16, &h);
+        h += 1;
         vp9d_dbg(VP9D_DBG_HEADER, "frame_size_height %d", h);
-        if (mpp_get_bit1(&s->gb)) {// display size
+        // display size
+        READ_ONEBIT(gb, &val);
+        if (val) {
             RK_S32 dw, dh;
             vp9d_dbg(VP9D_DBG_HEADER, "display_info_flag %d", 1);
-            dw = mpp_get_bits(&s->gb, 16) + 1;
+            READ_BITS(gb, 16, &dw);
+            dw += 1;
             vp9d_dbg(VP9D_DBG_HEADER, "display_size_width %d", dw);
-            dh = mpp_get_bits(&s->gb, 16) + 1;
-            vp9d_dbg(VP9D_DBG_HEADER, "display_size_width %d", dh);
+            READ_BITS(gb, 16, &dh);
+            dh += 1;
+            vp9d_dbg(VP9D_DBG_HEADER, "display_size_height %d", dh);
         } else
             vp9d_dbg(VP9D_DBG_HEADER, "display_info_flag %d", 0);
     } else {
-        s->intraonly  = (s->invisible != 0) ? mpp_get_bit1(&s->gb) : 0;
+        s->intraonly = 0;
+        if (s->show_frame_flag)
+            READ_ONEBIT(gb, &s->intraonly);
         vp9d_dbg(VP9D_DBG_HEADER, "intra_only %d", s->intraonly);
-        s->resetctx   = (s->errorres != 0) ? 0 : mpp_get_bits(&s->gb, 2);
+        s->resetctx = 0;
+        if (!s->error_res_mode) {
+            READ_BITS(gb, 2, &s->resetctx);
+            mpp_log("222 read resetctx %d", s->resetctx);
+        }
         vp9d_dbg(VP9D_DBG_HEADER, "reset_frame_context_value %d", s->resetctx);
         if (s->intraonly) {
-            if (mpp_get_bits(&s->gb, 24) != VP9_SYNCCODE) { // synccode
+            if (!read_synccode(gb)) { // synccode
                 mpp_err("Invalid sync code\n");
                 return MPP_ERR_STREAM;
             }
-            if (ctx->profile == 1) {
-                if ((fmt = read_colorspace_details(ctx)) < 0)
-                    return fmt;
-            } else {
-                s->ss_h = s->ss_v = 1;
-                s->bpp = 8;
-                s->bpp_index = 0;
-                s->bytesperpixel = 1;
-                fmt = MPP_FMT_YUV420SP;
-                ctx->colorspace = MPP_FRAME_SPC_BT470BG;
-                ctx->color_range = MPP_FRAME_RANGE_JPEG;
-            }
-            s->refreshrefmask = mpp_get_bits(&s->gb, 8);
-            vp9d_dbg(VP9D_DBG_HEADER, "refresh_frame_flags %d", s->refreshrefmask);
-            w = mpp_get_bits(&s->gb, 16) + 1;
-            vp9d_dbg(VP9D_DBG_HEADER, "frame_size_width %d", w);
-            h = mpp_get_bits(&s->gb, 16) + 1;
-            vp9d_dbg(VP9D_DBG_HEADER, "frame_size_height %d", h);
-            if (mpp_get_bit1(&s->gb)) {// display size
-                RK_S32 dw, dh;
-                vp9d_dbg(VP9D_DBG_HEADER, "display_info_flag %d", 1);
-                dw = mpp_get_bits(&s->gb, 16) + 1;
-                vp9d_dbg(VP9D_DBG_HEADER, "display_size_width %d", dw);
-                dh = mpp_get_bits(&s->gb, 16) + 1;
-                vp9d_dbg(VP9D_DBG_HEADER, "display_size_width %d", dh);
-            } else
-                vp9d_dbg(VP9D_DBG_HEADER, "display_info_flag %d", 0);
-        } else {
-            s->refreshrefmask = mpp_get_bits(&s->gb, 8);
-            vp9d_dbg(VP9D_DBG_HEADER, "refresh_frame_flags %d", s->refreshrefmask);
-            s->refidx[0]      = mpp_get_bits(&s->gb, 3);
-            s->signbias[0]    = mpp_get_bit1(&s->gb) && !s->errorres;
-            s->refidx[1]      = mpp_get_bits(&s->gb, 3);
-            s->signbias[1]    = mpp_get_bit1(&s->gb) && !s->errorres;
-            s->refidx[2]      = mpp_get_bits(&s->gb, 3);
-            s->signbias[2]    = mpp_get_bit1(&s->gb) && !s->errorres;
-            vp9d_dbg(VP9D_DBG_HEADER, "ref_idx %d %d %d",
-                     s->refidx[0], s->refidx[1], s->refidx[2]);
-            vp9d_dbg(VP9D_DBG_HEADER, "ref_idx_ref_frame_sign_bias %d %d %d",
-                     s->signbias[0], s->signbias[1], s->signbias[2]);
-            if (!s->refs[s->refidx[0]].ref ||
-                !s->refs[s->refidx[1]].ref ||
-                !s->refs[s->refidx[2]].ref ) {
-                mpp_err("Not all references are available\n");
-                //return -1;//AVERROR_INVALIDDATA;
-            }
-            if (mpp_get_bit1(&s->gb)) {
+            s->subsampling_x = 1;
+            s->subsampling_y = 1;
+            s->bpp = 8;
+            s->bpp_index = 0;
+            s->bytesperpixel = 1;
+            fmt = MPP_FMT_YUV420SP;
+            ctx->colorspace = MPP_FRAME_SPC_BT470BG;
+            ctx->color_range = MPP_FRAME_RANGE_JPEG;
 
-                vp9d_dbg(VP9D_DBG_HEADER, "ref_flag 0");
-                w = mpp_frame_get_width(s->refs[s->refidx[0]].f);
-                h = mpp_frame_get_height(s->refs[s->refidx[0]].f);
-            } else if (mpp_get_bit1(&s->gb)) {
-                vp9d_dbg(VP9D_DBG_HEADER, "ref_flag 2");
-                w = mpp_frame_get_width(s->refs[s->refidx[1]].f);
-                h = mpp_frame_get_height(s->refs[s->refidx[1]].f);
-            } else if (mpp_get_bit1(&s->gb)) {
-                vp9d_dbg(VP9D_DBG_HEADER, "ref_flag 1");
-                w = mpp_frame_get_width(s->refs[s->refidx[2]].f);
-                h = mpp_frame_get_height(s->refs[s->refidx[2]].f);
-            } else {
-                w = mpp_get_bits(&s->gb, 16) + 1;
-                vp9d_dbg(VP9D_DBG_HEADER, "frame_size_width %d", w);
-                h = mpp_get_bits(&s->gb, 16) + 1;
-                vp9d_dbg(VP9D_DBG_HEADER, "frame_size_height %d", h);
-            }
-            if (w == 0 || h == 0) {
-                mpp_err("ref frame w:%d h:%d\n", w, h);
-                return -1;
-            }
-            // Note that in this code, "CUR_FRAME" is actually before we
-            // have formally allocated a frame, and thus actually represents
-            // the _last_ frame
-            s->use_last_frame_mvs &= mpp_frame_get_width(s->frames[CUR_FRAME].f) == w &&
-                                     mpp_frame_get_height(s->frames[CUR_FRAME].f) == h;
-            if (mpp_get_bit1(&s->gb)) {// display size
+            READ_BITS(gb, 8, &s->refresh_frame_flags);
+            vp9d_dbg(VP9D_DBG_HEADER, "refresh_frame_flags %d", s->refresh_frame_flags);
+            READ_BITS(gb, 16, &w);
+            w += 1;
+            vp9d_dbg(VP9D_DBG_HEADER, "frame_size_width %d", w);
+            READ_BITS(gb, 16, &h);
+            h += 1;
+            vp9d_dbg(VP9D_DBG_HEADER, "frame_size_height %d", h);
+            // display size
+            READ_ONEBIT(gb, &val);
+            vp9d_dbg(VP9D_DBG_HEADER, "display_info_flag %d", val);
+            if (val) {
                 RK_S32 dw, dh;
-                vp9d_dbg(VP9D_DBG_HEADER, "display_info_flag %d", 1);
-                dw = mpp_get_bits(&s->gb, 16) + 1;
+                READ_BITS(gb, 16, &dw);
+                dw += 1;
                 vp9d_dbg(VP9D_DBG_HEADER, "display_size_width %d", dw);
-                dh = mpp_get_bits(&s->gb, 16) + 1;
-                vp9d_dbg(VP9D_DBG_HEADER, "display_size_width %d", dh);
-            } else
-                vp9d_dbg(VP9D_DBG_HEADER, "display_info_flag %d", 0);
-            s->highprecisionmvs = mpp_get_bit1(&s->gb);
-            vp9d_dbg(VP9D_DBG_HEADER, "allow_high_precision_mv %d", s->highprecisionmvs);
-            s->filtermode = (mpp_get_bit1(&s->gb) != 0) ? FILTER_SWITCHABLE :
-                            mpp_get_bits(&s->gb, 2);
-            vp9d_dbg(VP9D_DBG_HEADER, "filtermode %d", s->filtermode);
-            s->allowcompinter = (s->signbias[0] != s->signbias[1] ||
-                                 s->signbias[0] != s->signbias[2]);
-            if (s->allowcompinter) {
-                if (s->signbias[0] == s->signbias[1]) {
-                    s->fixcompref    = 2;
-                    s->varcompref[0] = 0;
-                    s->varcompref[1] = 1;
-                } else if (s->signbias[0] == s->signbias[2]) {
-                    s->fixcompref    = 1;
-                    s->varcompref[0] = 0;
-                    s->varcompref[1] = 2;
-                } else {
-                    s->fixcompref    = 0;
-                    s->varcompref[0] = 1;
-                    s->varcompref[1] = 2;
+                READ_BITS(gb, 16, &dh);
+                dh += 1;
+                vp9d_dbg(VP9D_DBG_HEADER, "display_size_height %d", dh);
+            }
+        } else {
+            READ_BITS(gb, 8, &s->refresh_frame_flags);
+            vp9d_dbg(VP9D_DBG_HEADER, "refresh_frame_flags %d", s->refresh_frame_flags);
+            for (i = 0; i < 3; i++) {
+                READ_BITS(gb, 3, &s->refidx[i]);
+                READ_ONEBIT(gb, &s->signbias[i]);
+                s->signbias[i] = s->signbias[i] && !s->error_res_mode;
+                vp9d_dbg(VP9D_DBG_HEADER, "[%d] refidx %d, signbias %d", i, s->refidx[i], s->signbias[i]);
+                if (!s->refs[s->refidx[i]].ref)
+                    mpp_err("refidx %d not available\n", s->refidx[i]);
+            }
+            // setup frame size with refs
+            RK_S32 found = 0;
+            for (i = 0; i < 3; i++) {
+                READ_ONEBIT(gb, &val);
+                vp9d_dbg(VP9D_DBG_HEADER, "ref_flag %d", i);
+                if (val) {
+                    w = mpp_frame_get_width(s->refs[s->refidx[i]].f);
+                    h = mpp_frame_get_height(s->refs[s->refidx[i]].f);
+                    found = 1;
+                    break;
                 }
             }
+            if (!found) {
+                READ_BITS(gb, 16, &w);
+                w += 1;
+                vp9d_dbg(VP9D_DBG_HEADER, "frame_size_width %d", w);
+                READ_BITS(gb, 16, &h);
+                h += 1;
+                vp9d_dbg(VP9D_DBG_HEADER, "frame_size_height %d", h);
+            }
 
+            if (w == 0 || h == 0) {
+                mpp_err("ref frame w:%d h:%d\n", w, h);
+                return MPP_ERR_STREAM;
+            }
+            //  set use_last_frame_mvs
+            s->use_last_frame_mvs &= mpp_frame_get_width(s->frames[VP9_CUR_FRAME].f) == w &&
+                                     mpp_frame_get_height(s->frames[VP9_CUR_FRAME].f) == h;
+            // display size
+            READ_ONEBIT(gb, &val);
+            vp9d_dbg(VP9D_DBG_HEADER, "display_info_flag %d", val);
+            if (val) {
+                RK_S32 dw, dh;
+                READ_BITS(gb, 16, &dw);
+                dw += 1;
+                vp9d_dbg(VP9D_DBG_HEADER, "display_size_width %d", dw);
+                READ_BITS(gb, 16, &dh);
+                dh += 1;
+                vp9d_dbg(VP9D_DBG_HEADER, "display_size_height %d", dh);
+            }
+            READ_ONEBIT(gb, &s->allow_high_precision_mv);
+            vp9d_dbg(VP9D_DBG_HEADER, "allow_high_precision_mv %d", s->allow_high_precision_mv);
+            // read interp filter
+            READ_ONEBIT(gb, &val);
+            if (val) {
+                s->interp_filter = VP9_FILTER_SWITCHABLE;
+            } else {
+                READ_BITS(gb, 2, &s->interp_filter);
+            }
+            vp9d_dbg(VP9D_DBG_HEADER, "interp_filter %d", s->interp_filter);
             for (i = 0; i < 3; i++) {
                 RK_U32 refw = mpp_frame_get_width(s->refs[s->refidx[i]].f);
                 RK_U32 refh = mpp_frame_get_height(s->refs[s->refidx[i]].f);
@@ -843,10 +635,8 @@ static RK_S32 decode_parser_header(Vp9CodecContext *ctx,
 
                 vp9d_dbg(VP9D_DBG_REF, "ref get width frame slot %p", s->refs[s->refidx[i]].f);
                 if (reffmt != fmt) {
-                    /* mpp_err("Ref pixfmt (%s) did not match current frame (%s)",
-                           av_get_pix_fmt_name(ref->format),
-                           av_get_pix_fmt_name(fmt)); */
-                    //return -1;//AVERROR_INVALIDDATA;
+                    /* TODO */
+
                 } else if (refw == w && refh == h) {
                     s->mvscale[i][0] = (refw << 14) / w;
                     s->mvscale[i][1] = (refh << 14) / h;
@@ -865,16 +655,23 @@ static RK_S32 decode_parser_header(Vp9CodecContext *ctx,
         }
     }
 
-    s->refreshctx   = (s->errorres != 0) ? 0 : mpp_get_bit1(&s->gb);
-    vp9d_dbg(VP9D_DBG_HEADER, "refresh_frame_context_flag %d", s->refreshctx);
-    s->parallelmode = (s->errorres != 0) ? 1 : mpp_get_bit1(&s->gb);
-    vp9d_dbg(VP9D_DBG_HEADER, "frame_parallel_decoding_mode %d", s->parallelmode);
-    s->framectxid   = c = mpp_get_bits(&s->gb, 2);
-    vp9d_dbg(VP9D_DBG_HEADER, "frame_context_idx %d", s->framectxid);
+    if (s->error_res_mode) {
+        s->refresh_frame_context = 0;
+        s->frame_parallel_mode = 1;
+    } else {
+        READ_ONEBIT(gb, &s->refresh_frame_context);
+        READ_ONEBIT(gb, &s->frame_parallel_mode);
+    }
+    vp9d_dbg(VP9D_DBG_HEADER, "refresh_frame_context_flag %d", s->refresh_frame_context);
+    vp9d_dbg(VP9D_DBG_HEADER, "frame_parallel_decoding_mode %d", s->frame_parallel_mode);
 
-    /* loopfilter header data */
-    if (s->keyframe || s->errorres || s->intraonly) {
-        // reset loopfilter defaults
+    READ_BITS(gb, 2, &s->frame_context_idx);
+    vp9d_dbg(VP9D_DBG_HEADER, "frame_context_idx %d", s->frame_context_idx);
+
+    // set default loopfilter deltas
+    if (s->keyframe || s->intraonly || s->error_res_mode) {
+        s->lf_delta.enabled = 1;
+        s->lf_delta.update = 1;
         s->lf_delta.ref[0] = 1;
         s->lf_delta.ref[1] = 0;
         s->lf_delta.ref[2] = -1;
@@ -882,64 +679,85 @@ static RK_S32 decode_parser_header(Vp9CodecContext *ctx,
         s->lf_delta.mode[0] = 0;
         s->lf_delta.mode[1] = 0;
     }
-    s->filter.level = mpp_get_bits(&s->gb, 6);
+    // set loopfilter deltas
+    READ_BITS(gb, 6, &s->filter.level);
     vp9d_dbg(VP9D_DBG_HEADER, "filter_level %d", s->filter.level);
-    sharp = mpp_get_bits(&s->gb, 3);
-    vp9d_dbg(VP9D_DBG_HEADER, "sharpness_level %d", sharp);
-    // if sharpness changed, reinit lim/mblim LUTs. if it didn't change, keep
-    // the old cache values since they are still valid
-    if (s->filter.sharpness != sharp)
-        memset(s->filter.lim_lut, 0, sizeof(s->filter.lim_lut));
-    s->filter.sharpness = sharp;
-
-    if ((s->lf_delta.enabled = mpp_get_bit1(&s->gb))) {
-        vp9d_dbg(VP9D_DBG_HEADER, "mode_ref_delta_enabled 1");
-        if ((s->lf_delta.update = mpp_get_bit1(&s->gb))) {
-            vp9d_dbg(VP9D_DBG_HEADER, "mode_ref_delta_update 1");
+    {
+        RK_S32 sharpness_level;
+        READ_BITS(gb, 3, &sharpness_level);
+        vp9d_dbg(VP9D_DBG_HEADER, "sharpness_level %d", sharpness_level);
+        // update sharpness
+        if (s->filter.sharpness != sharpness_level)
+            memset(s->filter.lim_lut, 0, sizeof(s->filter.lim_lut));
+        s->filter.sharpness = sharpness_level;
+    }
+    READ_ONEBIT(gb, &s->lf_delta.enabled);
+    if (s->lf_delta.enabled) {
+        vp9d_dbg(VP9D_DBG_HEADER, "mode_ref_delta_enabled=1");
+        READ_ONEBIT(gb, &s->lf_delta.update);
+        if (s->lf_delta.update) {
+            vp9d_dbg(VP9D_DBG_HEADER, "mode_ref_delta_update=1");
             for (i = 0; i < 4; i++) {
-                if (mpp_get_bit1(&s->gb))
-                    s->lf_delta.ref[i] = get_sbits_inv(&s->gb, 6);
+                READ_ONEBIT(gb, &val);
+                if (val)
+                    READ_SIGNBITS(gb, 6, &s->lf_delta.ref[i]);
                 vp9d_dbg(VP9D_DBG_HEADER, "ref_deltas %d", s->lf_delta.ref[i]);
             }
             for (i = 0; i < 2; i++) {
-                if (mpp_get_bit1(&s->gb))
-                    s->lf_delta.mode[i] = get_sbits_inv(&s->gb, 6);
+                READ_ONEBIT(gb, &val);
+                if (val)
+                    READ_SIGNBITS(gb, 6, &s->lf_delta.mode[i]);
                 vp9d_dbg(VP9D_DBG_HEADER, "mode_deltas %d", s->lf_delta.mode[i]);
             }
         }
     }
 
-    /* quantization header data */
-    s->yac_qi      = mpp_get_bits(&s->gb, 8);
-    vp9d_dbg(VP9D_DBG_HEADER, "base_qindex %d", s->yac_qi);
-    s->ydc_qdelta  = (mpp_get_bit1(&s->gb) != 0) ? get_sbits_inv(&s->gb, 4) : 0;
-    vp9d_dbg(VP9D_DBG_HEADER, "ydc_qdelta %d", s->ydc_qdelta);
-    s->uvdc_qdelta = (mpp_get_bit1(&s->gb) != 0) ? get_sbits_inv(&s->gb, 4) : 0;
-    vp9d_dbg(VP9D_DBG_HEADER, "uvdc_qdelta %d", s->uvdc_qdelta);
-    s->uvac_qdelta = (mpp_get_bit1(&s->gb) != 0) ? get_sbits_inv(&s->gb, 4) : 0;
-    vp9d_dbg(VP9D_DBG_HEADER, "uvac_qdelta %d", s->uvac_qdelta);
-    s->lossless    = s->yac_qi == 0 && s->ydc_qdelta == 0 &&
-                     s->uvdc_qdelta == 0 && s->uvac_qdelta == 0;
+    // read quantization header data
+    READ_BITS(gb, 8, &s->base_qindex);
+    vp9d_dbg(VP9D_DBG_HEADER, "base_qindex %d", s->base_qindex);
+    s->y_dc_delta_q = 0;
+    READ_ONEBIT(gb, &val);
+    if (val)
+        READ_SIGNBITS(gb, 4, &s->y_dc_delta_q);
+    vp9d_dbg(VP9D_DBG_HEADER, "y_dc_delta_q %d", s->y_dc_delta_q);
+    s->uv_dc_delta_q = 0;
+    READ_ONEBIT(gb, &val);
+    if (val)
+        READ_SIGNBITS(gb, 4, &s->uv_dc_delta_q);
+    vp9d_dbg(VP9D_DBG_HEADER, "uv_dc_delta_q %d", s->uv_dc_delta_q);
+    s->uv_ac_delta_q = 0;
+    READ_ONEBIT(gb, &val);
+    if (val)
+        READ_SIGNBITS(gb, 4, &s->uv_ac_delta_q);
+    vp9d_dbg(VP9D_DBG_HEADER, "uv_ac_delta_q %d", s->uv_ac_delta_q);
+    s->lossless = s->base_qindex == 0 && s->y_dc_delta_q == 0 &&
+                  s->uv_dc_delta_q == 0 && s->uv_ac_delta_q == 0;
 
-    /* segmentation header info */
+    // Segmentation map update
     s->segmentation.update_map = 0;
     s->segmentation.ignore_refmap = 0;
-    if ((s->segmentation.enabled = mpp_get_bit1(&s->gb))) {
-        vp9d_dbg(VP9D_DBG_HEADER, "segmentation_enabled 1");
-        if ((s->segmentation.update_map = mpp_get_bit1(&s->gb))) {
-            vp9d_dbg(VP9D_DBG_HEADER, "update_map 1");
+    READ_ONEBIT(gb, &s->segmentation.enabled);
+    vp9d_dbg(VP9D_DBG_HEADER, "segmentation_enabled %d", s->segmentation.enabled);
+    if (s->segmentation.enabled) {
+        READ_ONEBIT(gb, &s->segmentation.update_map);
+        vp9d_dbg(VP9D_DBG_HEADER, "update_map %d", s->segmentation.update_map);
+        if (s->segmentation.update_map) {
             for (i = 0; i < 7; i++) {
-                s->prob.seg[i] = (mpp_get_bit1(&s->gb) != 0) ?
-                                 mpp_get_bits(&s->gb, 8) : 255;
+                s->prob.seg[i] = 255;
+                READ_ONEBIT(gb, &val);
+                if (val)
+                    READ_BITS(gb, 8, &s->prob.seg[i]);
                 vp9d_dbg(VP9D_DBG_HEADER, "tree_probs %d value 0x%x", i, s->prob.seg[i]);
             }
-            s->segmentation.temporal = mpp_get_bit1(&s->gb);
+            READ_ONEBIT(gb, &s->segmentation.temporal);
+            vp9d_dbg(VP9D_DBG_HEADER, "tempora_update %d", s->segmentation.temporal);
             if (s->segmentation.temporal) {
-                vp9d_dbg(VP9D_DBG_HEADER, "tempora_update 1");
                 for (i = 0; i < 3; i++) {
-                    s->prob.segpred[i] = (mpp_get_bit1(&s->gb) != 0) ?
-                                         mpp_get_bits(&s->gb, 8) : 255;
-                    vp9d_dbg(VP9D_DBG_HEADER, "pred_probs %d", i, s->prob.segpred[i]);
+                    s->prob.segpred[i] = 255;
+                    READ_ONEBIT(gb, &val);
+                    if (val)
+                        READ_BITS(gb, 8, &s->prob.segpred[i]);
+                    vp9d_dbg(VP9D_DBG_HEADER, "pred_probs %d value 0x%x", i, s->prob.segpred[i]);
                 }
             } else {
                 for (i = 0; i < 3; i++)
@@ -947,119 +765,108 @@ static RK_S32 decode_parser_header(Vp9CodecContext *ctx,
             }
         }
         if ((!s->segmentation.update_map || s->segmentation.temporal) &&
-            (w !=  mpp_frame_get_width(s->frames[CUR_FRAME].f) ||
-             h !=  mpp_frame_get_height(s->frames[CUR_FRAME].f))) {
-            /* av_log(ctx, AV_LOG_WARNING,
-                   "Reference segmap (temp=%d,update=%d) enabled on size-change!\n",
-                   s->segmentation.temporal, s->segmentation.update_map);
-                s->segmentation.ignore_refmap = 1; */
-            //return -1;//AVERROR_INVALIDDATA;
-        }
+            (w != mpp_frame_get_width(s->frames[VP9_CUR_FRAME].f) ||
+             h != mpp_frame_get_height(s->frames[VP9_CUR_FRAME].f))) {
 
-        if (mpp_get_bit1(&s->gb)) {
-            vp9d_dbg(VP9D_DBG_HEADER, "update_data 1");
-            s->segmentation.absolute_vals = mpp_get_bit1(&s->gb);
+            /* TODO */
+            //return -1;
+        }
+        // segmentation data update
+        READ_ONEBIT(gb, &val);
+        vp9d_dbg(VP9D_DBG_HEADER, "update_data %d", val);
+        if (val) {
+            READ_ONEBIT(gb, &s->segmentation.absolute_vals);
             vp9d_dbg(VP9D_DBG_HEADER, "abs_delta %d", s->segmentation.absolute_vals);
             for (i = 0; i < 8; i++) {
-                if ((s->segmentation.feat[i].q_enabled = mpp_get_bit1(&s->gb)))
-                    s->segmentation.feat[i].q_val = get_sbits_inv(&s->gb, 8);
-                vp9d_dbg(VP9D_DBG_HEADER, "frame_qp_delta %d", s->segmentation.feat[i].q_val);
-                if ((s->segmentation.feat[i].lf_enabled = mpp_get_bit1(&s->gb)))
-                    s->segmentation.feat[i].lf_val = get_sbits_inv(&s->gb, 6);
-                vp9d_dbg(VP9D_DBG_HEADER, "frame_loopfilter_value %d", i, s->segmentation.feat[i].lf_val);
-                if ((s->segmentation.feat[i].ref_enabled = mpp_get_bit1(&s->gb)))
-                    s->segmentation.feat[i].ref_val = mpp_get_bits(&s->gb, 2);
-                vp9d_dbg(VP9D_DBG_HEADER, "frame_reference_info %d", i, s->segmentation.feat[i].ref_val);
-                s->segmentation.feat[i].skip_enabled = mpp_get_bit1(&s->gb);
-                vp9d_dbg(VP9D_DBG_HEADER, "frame_skip %d", i, s->segmentation.feat[i].skip_enabled);
+                READ_ONEBIT(gb, &s->segmentation.feat[i].q_enabled);
+                if (s->segmentation.feat[i].q_enabled)
+                    READ_SIGNBITS(gb, 8, &s->segmentation.feat[i].q_val);
+                vp9d_dbg(VP9D_DBG_HEADER, "q_enabled %d frame_qp_delta %d",
+                         s->segmentation.feat[i].q_enabled, s->segmentation.feat[i].q_val);
+                READ_ONEBIT(gb, &s->segmentation.feat[i].lf_enabled);
+                if (s->segmentation.feat[i].lf_enabled)
+                    READ_SIGNBITS(gb, 6, &s->segmentation.feat[i].lf_val);
+                vp9d_dbg(VP9D_DBG_HEADER, "lf_enabled %d frame_loopfilter_value %d",
+                         s->segmentation.feat[i].lf_enabled, s->segmentation.feat[i].lf_val);
+                READ_ONEBIT(gb, &s->segmentation.feat[i].ref_enabled);
+                if (s->segmentation.feat[i].ref_enabled)
+                    READ_BITS(gb, 2, &s->segmentation.feat[i].ref_val);
+                vp9d_dbg(VP9D_DBG_HEADER, "ref_enabled %d frame_reference_info %d",
+                         s->segmentation.feat[i].ref_enabled, s->segmentation.feat[i].ref_val);
+                READ_ONEBIT(gb, &s->segmentation.feat[i].skip_enabled);
+                vp9d_dbg(VP9D_DBG_HEADER, "skip_enabled %d", s->segmentation.feat[i].skip_enabled);
             }
         }
     } else {
-        vp9d_dbg(VP9D_DBG_HEADER, "segmentation_enabled 0");
         s->segmentation.feat[0].q_enabled    = 0;
         s->segmentation.feat[0].lf_enabled   = 0;
-        s->segmentation.feat[0].skip_enabled = 0;
         s->segmentation.feat[0].ref_enabled  = 0;
+        s->segmentation.feat[0].skip_enabled = 0;
     }
 
-    // set qmul[] based on Y/UV, AC/DC and segmentation Q idx deltas
-    for (i = 0; i < ((s->segmentation.enabled != 0) ? 8 : 1); i++) {
-        RK_S32 qyac, qydc, quvac, quvdc, lflvl, sh;
+    // Build y/uv dequant values based on segmentation
+    for (i = 0; i < (s->segmentation.enabled ? 8 : 1); i++) {
+        RK_S32 y_ac_q, y_dc_q, uv_ac_q, uv_dc_q;
 
         if (s->segmentation.feat[i].q_enabled) {
             if (s->segmentation.absolute_vals)
-                qyac = s->segmentation.feat[i].q_val;
+                y_ac_q = s->segmentation.feat[i].q_val;
             else
-                qyac = s->yac_qi + s->segmentation.feat[i].q_val;
+                y_ac_q = s->base_qindex + s->segmentation.feat[i].q_val;
         } else {
-            qyac  = s->yac_qi;
+            y_ac_q  = s->base_qindex;
         }
-        qydc  = av_clip_uintp2(qyac + s->ydc_qdelta, 8);
-        quvdc = av_clip_uintp2(qyac + s->uvdc_qdelta, 8);
-        quvac = av_clip_uintp2(qyac + s->uvac_qdelta, 8);
-        qyac  = av_clip_uintp2(qyac, 8);
+        y_dc_q  = mpp_clip_uint_pow2(y_ac_q + s->y_dc_delta_q, 8);
+        uv_dc_q = mpp_clip_uint_pow2(y_ac_q + s->uv_dc_delta_q, 8);
+        uv_ac_q = mpp_clip_uint_pow2(y_ac_q + s->uv_ac_delta_q, 8);
+        y_ac_q  = mpp_clip_uint_pow2(y_ac_q, 8);
 
-        s->segmentation.feat[i].qmul[0][0] = vp9_dc_qlookup[s->bpp_index][qydc];
-        s->segmentation.feat[i].qmul[0][1] = vp9_ac_qlookup[s->bpp_index][qyac];
-        s->segmentation.feat[i].qmul[1][0] = vp9_dc_qlookup[s->bpp_index][quvdc];
-        s->segmentation.feat[i].qmul[1][1] = vp9_ac_qlookup[s->bpp_index][quvac];
-
-        sh = s->filter.level >= 32;
-        if (s->segmentation.feat[i].lf_enabled) {
-            if (s->segmentation.absolute_vals)
-                lflvl = av_clip_uintp2(s->segmentation.feat[i].lf_val, 6);
-            else
-                lflvl = av_clip_uintp2(s->filter.level + s->segmentation.feat[i].lf_val, 6);
-        } else {
-            lflvl  = s->filter.level;
-        }
-        if (s->lf_delta.enabled) {
-            s->segmentation.feat[i].lflvl[0][0] =
-                s->segmentation.feat[i].lflvl[0][1] =
-                    av_clip_uintp2(lflvl + (s->lf_delta.ref[0] << sh), 6);
-            for (j = 1; j < 4; j++) {
-                s->segmentation.feat[i].lflvl[j][0] =
-                    av_clip_uintp2(lflvl + ((s->lf_delta.ref[j] +
-                                             s->lf_delta.mode[0]) * (1 << sh)), 6);
-                s->segmentation.feat[i].lflvl[j][1] =
-                    av_clip_uintp2(lflvl + ((s->lf_delta.ref[j] +
-                                             s->lf_delta.mode[1]) * (1 << sh)), 6);
-            }
-        } else {
-            memset(s->segmentation.feat[i].lflvl, lflvl,
-                   sizeof(s->segmentation.feat[i].lflvl));
-        }
+        s->segmentation.feat[i].qmul[0][0] = vp9_dc_qlookup[s->bpp_index][y_dc_q];
+        s->segmentation.feat[i].qmul[0][1] = vp9_ac_qlookup[s->bpp_index][y_ac_q];
+        s->segmentation.feat[i].qmul[1][0] = vp9_dc_qlookup[s->bpp_index][uv_dc_q];
+        s->segmentation.feat[i].qmul[1][1] = vp9_ac_qlookup[s->bpp_index][uv_ac_q];
     }
 
-    /* tiling info */
-    if ((res = update_size(ctx, w, h, fmt)) < 0) {
-        mpp_err("Failed to initialize decoder for %dx%d @ %d\n", w, h, fmt);
+    // update size
+    RK_S32 res = update_size(ctx, w, h, fmt);
+    if (res < 0) {
+        mpp_err("Failed to update size for %dx%d @ %d\n", w, h, fmt);
         return res;
     }
 
+    // get min log2 tile cols
     for (s->tiling.log2_tile_cols = 0;
          (s->sb_cols >> s->tiling.log2_tile_cols) > 64;
          s->tiling.log2_tile_cols++) ;
-    for (max = 0; (s->sb_cols >> max) >= 4; max++) ;
-    max = MPP_MAX(0, max - 1);
-    while ((RK_U32)max > s->tiling.log2_tile_cols) {
-        if (mpp_get_bit1(&s->gb)) {
+    // get max log2 tile cols
+    RK_S32 max_log2 = 0;
+    for (max_log2 = 0; (s->sb_cols >> max_log2) >= 4; max_log2++) ;
+    max_log2 = MPP_MAX(0, max_log2 - 1);
+    while ((RK_U32)max_log2 > s->tiling.log2_tile_cols) {
+        RK_S32 log2_tile_col_end_flag;
+        READ_ONEBIT(gb, &log2_tile_col_end_flag);
+        vp9d_dbg(VP9D_DBG_HEADER, "log2_tile_col_end_flag %d", log2_tile_col_end_flag);
+        if (log2_tile_col_end_flag) {
             s->tiling.log2_tile_cols++;
-            vp9d_dbg(VP9D_DBG_HEADER, "log2_tile_col_end_flag 1");
         } else {
-            vp9d_dbg(VP9D_DBG_HEADER, "log2_tile_col_end_flag 0");
             break;
         }
     }
-    s->tiling.log2_tile_rows = decode012(&s->gb);
+    // read tile_rows
+    READ_ONEBIT(gb, &s->tiling.log2_tile_rows);
+    if (s->tiling.log2_tile_rows) {
+        READ_ONEBIT(gb, &val);
+        s->tiling.log2_tile_rows += val;
+    }
     vp9d_dbg(VP9D_DBG_HEADER, "log2_tile_rows %d", s->tiling.log2_tile_rows);
+
     s->tiling.tile_rows = 1 << s->tiling.log2_tile_rows;
     if (s->tiling.tile_cols != (1U << s->tiling.log2_tile_cols)) {
         s->tiling.tile_cols = 1 << s->tiling.log2_tile_cols;
         {
-            RK_U32 min_size = sizeof(VpxRangeCoder) * s->tiling.tile_cols;
+            RK_U32 min_size = sizeof(Vp9dReader) * s->tiling.tile_cols;
             if (min_size > s->c_b_size) {
-                s->c_b = (VpxRangeCoder *)mpp_malloc(RK_U8, min_size);
+                s->c_b = (Vp9dReader *)mpp_malloc(RK_U8, min_size);
                 s->c_b_size = min_size;
             }
         }
@@ -1068,40 +875,49 @@ static RK_S32 decode_parser_header(Vp9CodecContext *ctx,
             return MPP_ERR_NOMEM;
         }
     }
-
-    if (s->keyframe || s->errorres ||
-        (s->intraonly && s->resetctx == 3)) {
-        s->prob_ctx[0].p = s->prob_ctx[1].p = s->prob_ctx[2].p =
-                                                  s->prob_ctx[3].p = vp9_default_probs;
-        memcpy(s->prob_ctx[0].coef, vp9_default_coef_probs,
-               sizeof(vp9_default_coef_probs));
-        memcpy(s->prob_ctx[1].coef, vp9_default_coef_probs,
-               sizeof(vp9_default_coef_probs));
-        memcpy(s->prob_ctx[2].coef, vp9_default_coef_probs,
-               sizeof(vp9_default_coef_probs));
-        memcpy(s->prob_ctx[3].coef, vp9_default_coef_probs,
-               sizeof(vp9_default_coef_probs));
+    // set frame context
+    RK_S32 cidx = s->frame_context_idx;
+    if (s->keyframe || s->error_res_mode || (s->intraonly && s->resetctx == 3)) {
+        for (i = 0; i < 4; i++) {
+            s->prob_ctx[i].p = vp9_default_probs;
+            memcpy(s->prob_ctx[i].coef, vp9_default_coef_probs, sizeof(vp9_default_coef_probs));
+        }
     } else if (s->intraonly && s->resetctx == 2) {
-        s->prob_ctx[c].p = vp9_default_probs;
-        memcpy(s->prob_ctx[c].coef, vp9_default_coef_probs,
-               sizeof(vp9_default_coef_probs));
+        s->prob_ctx[cidx].p = vp9_default_probs;
+        memcpy(s->prob_ctx[cidx].coef, vp9_default_coef_probs, sizeof(vp9_default_coef_probs));
     }
-    if (s->keyframe || s->errorres || s->intraonly)
-        s->framectxid = c = 0;
+    if (s->keyframe || s->error_res_mode || s->intraonly) // reset context
+        s->frame_context_idx = 0;
 
     // next 16 bits is size of the rest of the header (arith-coded)
-    size2 = mpp_get_bits(&s->gb, 16);
-    vp9d_dbg(VP9D_DBG_HEADER, "first_partition_size %d", size2);
-    s->first_partition_size = size2;
-    data2 = mpp_align_get_bits(&s->gb);
-    vp9d_dbg(VP9D_DBG_HEADER, "offset %d", data2 - data);
-    s->uncompress_head_size_in_byte = data2 - data;
-    if (size2 > size - (data2 - data)) {
-        mpp_err("Invalid compressed header size\n");
+    RK_S32 first_partition_size;
+    READ_BITS(gb, 16, &first_partition_size);
+    vp9d_dbg(VP9D_DBG_HEADER, "first_partition_size %d", first_partition_size);
+    s->first_partition_size = first_partition_size;
+
+    const RK_U8 *aligned_data = mpp_align_get_bits(gb);
+    vp9d_dbg(VP9D_DBG_HEADER, "offset %d", aligned_data - data);
+    s->uncompress_head_size_in_byte = aligned_data - data;
+    vp9d_dbg(VP9D_DBG_HEADER, "uncompress_head_size_in_byte %d", s->uncompress_head_size_in_byte);
+    if (first_partition_size > (size - s->uncompress_head_size_in_byte)) {
+        mpp_err("invalid: compressed_header_size %d, size %d, uncompress_head_size_in_byte %d \n",
+                first_partition_size, size, s->uncompress_head_size_in_byte);
         return MPP_ERR_STREAM;
     }
-    vpx_init_range_decoder(&s->c, data2, size2);
-    if (vpx_rac_get_prob_branchy(&s->c, 128)) { // marker bit
+    return MPP_OK;
+__BITREAD_ERR:
+    return MPP_ERR_STREAM;
+}
+
+static RK_S32 read_compressed_header(VP9Context *s, const RK_U8 *aligned_data,
+                                     RK_S32 first_partition_size)
+{
+    BitReadCtx_t *gb = &s->gb;
+    RK_S32 c, i, j, k, l, m, n;
+
+    vp9d_reader_init(&s->c, aligned_data, first_partition_size);
+
+    if (vp9d_read(&s->c, 128)) { // marker bit
         mpp_err("Marker bit was set\n");
         return MPP_ERR_STREAM;
     }
@@ -1112,47 +928,47 @@ static RK_S32 decode_parser_header(Vp9CodecContext *ctx,
     } else {
         memset(&s->counts, 0, sizeof(s->counts));
     }
-    // FIXME is it faster to not copy here, but do it down in the fw updates
-    // as explicit copies if the fw update is missing (and skip the copy upon
-    // fw update)?
+
+    // set prob context
+    c = s->frame_context_idx;
     s->prob.p = s->prob_ctx[c].p;
     memset(&s->prob_flag_delta, 0, sizeof(s->prob_flag_delta));
     // txfm updates
     if (s->lossless) {
-        s->txfmmode = TX_4X4;
+        s->txfmmode = VP9_TX_4X4;
     } else {
-        s->txfmmode = vpx_rac_get_uint(&s->c, 2);
-        if (s->txfmmode == 3)
-            s->txfmmode += vpx_rac_get(&s->c);
+        s->txfmmode = vp9d_read_bits(&s->c, 2);
+        if (s->txfmmode == VP9_TX_32X32)
+            s->txfmmode += vp9d_read_bit(&s->c);
 
-        if (s->txfmmode == TX_SWITCHABLE) {
+        if (s->txfmmode == VP9_TX_SWITCHABLE) {
             for (i = 0; i < 2; i++) {
 
-                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                if (vp9d_read(&s->c, 252)) {
                     s->prob_flag_delta.p_flag.tx8p[i] = 1;
-                    s->prob.p.tx8p[i] = update_prob(&s->c, s->prob.p.tx8p[i],
-                                                    &s->prob_flag_delta.p_delta.tx8p[i]);
+                    s->prob.p.tx8p[i] = vp9d_diff_update_prob(&s->c, s->prob.p.tx8p[i],
+                                                              &s->prob_flag_delta.p_delta.tx8p[i]);
                 }
 
             }
             for (i = 0; i < 2; i++)
                 for (j = 0; j < 2; j++) {
 
-                    if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                    if (vp9d_read(&s->c, 252)) {
                         s->prob_flag_delta.p_flag.tx16p[i][j] = 1;
                         s->prob.p.tx16p[i][j] =
-                            update_prob(&s->c, s->prob.p.tx16p[i][j],
-                                        &s->prob_flag_delta.p_delta.tx16p[i][j]);
+                            vp9d_diff_update_prob(&s->c, s->prob.p.tx16p[i][j],
+                                                  &s->prob_flag_delta.p_delta.tx16p[i][j]);
                     }
                 }
             for (i = 0; i < 2; i++)
                 for (j = 0; j < 3; j++) {
 
-                    if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                    if (vp9d_read(&s->c, 252)) {
                         s->prob_flag_delta.p_flag.tx32p[i][j] = 1;
                         s->prob.p.tx32p[i][j] =
-                            update_prob(&s->c, s->prob.p.tx32p[i][j],
-                                        &s->prob_flag_delta.p_delta.tx32p[i][j]);
+                            vp9d_diff_update_prob(&s->c, s->prob.p.tx32p[i][j],
+                                                  &s->prob_flag_delta.p_delta.tx32p[i][j]);
                     }
                 }
         }
@@ -1161,7 +977,8 @@ static RK_S32 decode_parser_header(Vp9CodecContext *ctx,
     // coef updates
     for (i = 0; i < 4; i++) {
         RK_U8 (*ref)[2][6][6][3] = s->prob_ctx[c].coef[i];
-        if (vpx_rac_get(&s->c)) {
+
+        if (vp9d_read_bit(&s->c)) {
             for (j = 0; j < 2; j++)
                 for (k = 0; k < 2; k++)
                     for (l = 0; l < 6; l++)
@@ -1173,9 +990,9 @@ static RK_S32 decode_parser_header(Vp9CodecContext *ctx,
                             if (l == 0 && m >= 3) // dc only has 3 pt
                                 break;
                             for (n = 0; n < 3; n++) {
-                                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                                if (vp9d_read(&s->c, 252)) {
                                     p_flag[n] = 1;
-                                    p[n] = update_prob(&s->c, r[n], &p_delta[n]);
+                                    p[n] = vp9d_diff_update_prob(&s->c, r[n], &p_delta[n]);
                                 } else {
                                     p_flag[n] = 0;
                                     p[n] = r[n];
@@ -1200,453 +1017,399 @@ static RK_S32 decode_parser_header(Vp9CodecContext *ctx,
 
     // mode updates
     for (i = 0; i < 3; i++) {
-
-        if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+        if (vp9d_read(&s->c, 252)) {
             s->prob_flag_delta.p_flag.skip[i] = 1;
-            s->prob.p.skip[i] = update_prob(&s->c, s->prob.p.skip[i],
-                                            &s->prob_flag_delta.p_delta.skip[i]);
+            s->prob.p.skip[i] = vp9d_diff_update_prob(&s->c, s->prob.p.skip[i],
+                                                      &s->prob_flag_delta.p_delta.skip[i]);
         }
     }
 
     if (!s->keyframe && !s->intraonly) {
         for (i = 0; i < 7; i++)
             for (j = 0; j < 3; j++) {
-                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                if (vp9d_read(&s->c, 252)) {
                     s->prob_flag_delta.p_flag.mv_mode[i][j] = 1;
                     s->prob.p.mv_mode[i][j] =
-                        update_prob(&s->c, s->prob.p.mv_mode[i][j],
-                                    &s->prob_flag_delta.p_delta.mv_mode[i][j]);
+                        vp9d_diff_update_prob(&s->c, s->prob.p.mv_mode[i][j],
+                                              &s->prob_flag_delta.p_delta.mv_mode[i][j]);
                 }
             }
 
-        if (s->filtermode == FILTER_SWITCHABLE)
+        if (s->interp_filter == VP9_FILTER_SWITCHABLE)
             for (i = 0; i < 4; i++)
                 for (j = 0; j < 2; j++) {
-                    if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                    if (vp9d_read(&s->c, 252)) {
                         s->prob_flag_delta.p_flag.filter[i][j] = 1;
                         s->prob.p.filter[i][j] =
-                            update_prob(&s->c, s->prob.p.filter[i][j],
-                                        &s->prob_flag_delta.p_delta.filter[i][j]);
+                            vp9d_diff_update_prob(&s->c, s->prob.p.filter[i][j],
+                                                  &s->prob_flag_delta.p_delta.filter[i][j]);
                     }
                 }
 
         for (i = 0; i < 4; i++) {
-
-            if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+            if (vp9d_read(&s->c, 252)) {
                 s->prob_flag_delta.p_flag.intra[i] = 1;
-                s->prob.p.intra[i] = update_prob(&s->c, s->prob.p.intra[i],
-                                                 &s->prob_flag_delta.p_delta.intra[i]);
+                s->prob.p.intra[i] = vp9d_diff_update_prob(&s->c, s->prob.p.intra[i],
+                                                           &s->prob_flag_delta.p_delta.intra[i]);
             }
-
         }
-
+        s->allowcompinter = (s->signbias[0] != s->signbias[1] ||
+                             s->signbias[0] != s->signbias[2]);
         if (s->allowcompinter) {
-            s->comppredmode = vpx_rac_get(&s->c);
+            s->comppredmode = vp9d_read_bit(&s->c);
             if (s->comppredmode)
-                s->comppredmode += vpx_rac_get(&s->c);
-            if (s->comppredmode == PRED_SWITCHABLE)
+                s->comppredmode += vp9d_read_bit(&s->c);
+            if (s->comppredmode == VP9_PRED_SWITCHABLE)
                 for (i = 0; i < 5; i++) {
-                    if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                    if (vp9d_read(&s->c, 252)) {
                         s->prob_flag_delta.p_flag.comp[i] = 1;
                         s->prob.p.comp[i] =
-                            update_prob(&s->c, s->prob.p.comp[i],
-                                        &s->prob_flag_delta.p_delta.comp[i]);
+                            vp9d_diff_update_prob(&s->c, s->prob.p.comp[i],
+                                                  &s->prob_flag_delta.p_delta.comp[i]);
                     }
                 }
         } else {
-            s->comppredmode = PRED_SINGLEREF;
+            s->comppredmode = VP9_PRED_SINGLEREF;
         }
 
-        if (s->comppredmode != PRED_COMPREF) {
+        if (s->comppredmode != VP9_PRED_COMPREF) {
             for (i = 0; i < 5; i++) {
-                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                if (vp9d_read(&s->c, 252)) {
                     s->prob_flag_delta.p_flag.single_ref[i][0] = 1;
                     s->prob.p.single_ref[i][0] =
-                        update_prob(&s->c, s->prob.p.single_ref[i][0],
-                                    &s->prob_flag_delta.p_delta.single_ref[i][0]);
+                        vp9d_diff_update_prob(&s->c, s->prob.p.single_ref[i][0],
+                                              &s->prob_flag_delta.p_delta.single_ref[i][0]);
                 }
-                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                if (vp9d_read(&s->c, 252)) {
                     s->prob_flag_delta.p_flag.single_ref[i][1] = 1;
                     s->prob.p.single_ref[i][1] =
-                        update_prob(&s->c, s->prob.p.single_ref[i][1],
-                                    &s->prob_flag_delta.p_delta.single_ref[i][1]);
+                        vp9d_diff_update_prob(&s->c, s->prob.p.single_ref[i][1],
+                                              &s->prob_flag_delta.p_delta.single_ref[i][1]);
                 }
             }
         }
 
-        if (s->comppredmode != PRED_SINGLEREF) {
+        if (s->comppredmode != VP9_PRED_SINGLEREF) {
             for (i = 0; i < 5; i++) {
-                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                if (vp9d_read(&s->c, 252)) {
                     s->prob_flag_delta.p_flag.comp_ref[i] = 1;
                     s->prob.p.comp_ref[i] =
-                        update_prob(&s->c, s->prob.p.comp_ref[i],
-                                    &s->prob_flag_delta.p_delta.comp_ref[i]);
+                        vp9d_diff_update_prob(&s->c, s->prob.p.comp_ref[i],
+                                              &s->prob_flag_delta.p_delta.comp_ref[i]);
                 }
             }
         }
 
         for (i = 0; i < 4; i++)
             for (j = 0; j < 9; j++) {
-                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                if (vp9d_read(&s->c, 252)) {
                     s->prob_flag_delta.p_flag.y_mode[i][j] = 1;
                     s->prob.p.y_mode[i][j] =
-                        update_prob(&s->c, s->prob.p.y_mode[i][j],
-                                    &s->prob_flag_delta.p_delta.y_mode[i][j]);
+                        vp9d_diff_update_prob(&s->c, s->prob.p.y_mode[i][j],
+                                              &s->prob_flag_delta.p_delta.y_mode[i][j]);
                 }
             }
 
         for (i = 0; i < 4; i++)
             for (j = 0; j < 4; j++)
                 for (k = 0; k < 3; k++) {
-                    if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                    if (vp9d_read(&s->c, 252)) {
                         s->prob_flag_delta.p_flag.partition[3 - i][j][k] = 1;
                         s->prob.p.partition[3 - i][j][k] =
-                            update_prob(&s->c, s->prob.p.partition[3 - i][j][k],
-                                        &s->prob_flag_delta.p_delta.partition[3 - i][j][k]);
+                            vp9d_diff_update_prob(&s->c, s->prob.p.partition[3 - i][j][k],
+                                                  &s->prob_flag_delta.p_delta.partition[3 - i][j][k]);
                     }
                 }
 
-        // mv fields don't use the update_prob subexp model for some reason
         for (i = 0; i < 3; i++) {
-            if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+            if (vp9d_read(&s->c, 252)) {
                 s->prob_flag_delta.p_flag.mv_joint[i]   = 1;
                 s->prob_flag_delta.p_delta.mv_joint[i]  =
-                    s->prob.p.mv_joint[i]   = (vpx_rac_get_uint(&s->c, 7) << 1) | 1;
+                    s->prob.p.mv_joint[i]   = (vp9d_read_bits(&s->c, 7) << 1) | 1;
             }
         }
 
         for (i = 0; i < 2; i++) {
-            if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+            if (vp9d_read(&s->c, 252)) {
                 s->prob_flag_delta.p_flag.mv_comp[i].sign   = 1;
                 s->prob_flag_delta.p_delta.mv_comp[i].sign  =
-                    s->prob.p.mv_comp[i].sign   = (vpx_rac_get_uint(&s->c, 7) << 1) | 1;
+                    s->prob.p.mv_comp[i].sign   = (vp9d_read_bits(&s->c, 7) << 1) | 1;
             }
 
             for (j = 0; j < 10; j++)
-                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                if (vp9d_read(&s->c, 252)) {
                     s->prob_flag_delta.p_flag.mv_comp[i].classes[j]  = 1;
                     s->prob_flag_delta.p_delta.mv_comp[i].classes[j] =
-                        s->prob.p.mv_comp[i].classes[j]  = (vpx_rac_get_uint(&s->c, 7) << 1) | 1;
+                        s->prob.p.mv_comp[i].classes[j]  = (vp9d_read_bits(&s->c, 7) << 1) | 1;
                 }
 
-            if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+            if (vp9d_read(&s->c, 252)) {
                 s->prob_flag_delta.p_flag.mv_comp[i].class0  = 1;
                 s->prob_flag_delta.p_delta.mv_comp[i].class0 =
-                    s->prob.p.mv_comp[i].class0  = (vpx_rac_get_uint(&s->c, 7) << 1) | 1;
+                    s->prob.p.mv_comp[i].class0  = (vp9d_read_bits(&s->c, 7) << 1) | 1;
             }
 
             for (j = 0; j < 10; j++)
-                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                if (vp9d_read(&s->c, 252)) {
                     s->prob_flag_delta.p_flag.mv_comp[i].bits[j]  = 1;
                     s->prob_flag_delta.p_delta.mv_comp[i].bits[j] =
-                        s->prob.p.mv_comp[i].bits[j]  = (vpx_rac_get_uint(&s->c, 7) << 1) | 1;
+                        s->prob.p.mv_comp[i].bits[j]  = (vp9d_read_bits(&s->c, 7) << 1) | 1;
                 }
         }
 
         for (i = 0; i < 2; i++) {
             for (j = 0; j < 2; j++)
                 for (k = 0; k < 3; k++)
-                    if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                    if (vp9d_read(&s->c, 252)) {
                         s->prob_flag_delta.p_flag.mv_comp[i].class0_fp[j][k]  = 1;
                         s->prob_flag_delta.p_delta.mv_comp[i].class0_fp[j][k] =
-                            s->prob.p.mv_comp[i].class0_fp[j][k]  = (vpx_rac_get_uint(&s->c, 7) << 1) | 1;
+                            s->prob.p.mv_comp[i].class0_fp[j][k]  = (vp9d_read_bits(&s->c, 7) << 1) | 1;
                     }
 
             for (j = 0; j < 3; j++)
-                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                if (vp9d_read(&s->c, 252)) {
                     s->prob_flag_delta.p_flag.mv_comp[i].fp[j]  = 1;
                     s->prob_flag_delta.p_delta.mv_comp[i].fp[j] =
                         s->prob.p.mv_comp[i].fp[j]  =
-                            (vpx_rac_get_uint(&s->c, 7) << 1) | 1;
+                            (vp9d_read_bits(&s->c, 7) << 1) | 1;
                 }
         }
 
-        if (s->highprecisionmvs) {
+        if (s->allow_high_precision_mv) {
             for (i = 0; i < 2; i++) {
-                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                if (vp9d_read(&s->c, 252)) {
                     s->prob_flag_delta.p_flag.mv_comp[i].class0_hp  = 1;
                     s->prob_flag_delta.p_delta.mv_comp[i].class0_hp =
-                        s->prob.p.mv_comp[i].class0_hp  = (vpx_rac_get_uint(&s->c, 7) << 1) | 1;
+                        s->prob.p.mv_comp[i].class0_hp  = (vp9d_read_bits(&s->c, 7) << 1) | 1;
                 }
 
-                if (vpx_rac_get_prob_branchy(&s->c, 252)) {
+                if (vp9d_read(&s->c, 252)) {
                     s->prob_flag_delta.p_flag.mv_comp[i].hp  = 1;
                     s->prob_flag_delta.p_delta.mv_comp[i].hp =
-                        s->prob.p.mv_comp[i].hp  = (vpx_rac_get_uint(&s->c, 7) << 1) | 1;
+                        s->prob.p.mv_comp[i].hp  = (vp9d_read_bits(&s->c, 7) << 1) | 1;
                 }
             }
         }
     }
-
-    return (RK_S32)((data2 - data) + size2);
+    return 0;
 }
 
-static void adapt_prob(RK_U8 *p, RK_U32 ct0, RK_U32 ct1,
-                       RK_S32 max_count, RK_S32 update_factor)
+static RK_S32 decode_parser_header(Vp9DecCtx *ctx,
+                                   const RK_U8 *data, RK_S32 size, RK_S32 *refo)
 {
-    RK_U32 ct = ct0 + ct1, p2, p1;
+    VP9Context *s = ctx->priv_data;
+    RK_S32 ret;
 
-    if (!ct)
-        return;
-
-    p1 = *p;
-    p2 = ((ct0 << 8) + (ct >> 1)) / ct;
-    p2 = mpp_clip(p2, 1, 255);
-    ct = MPP_MIN(ct, (RK_U32)max_count);
-    update_factor = FASTDIV(update_factor * ct, max_count);
-
-    // (p1 * (256 - update_factor) + p2 * update_factor + 128) >> 8
-    *p = p1 + (((p2 - p1) * update_factor + 128) >> 8);
-}
-
-static void adapt_probs(VP9Context *s)
-{
-    RK_S32 i, j, k, l, m;
-    prob_context *p = &s->prob_ctx[s->framectxid].p;
-    RK_S32 uf = (s->keyframe || s->intraonly || !s->last_keyframe) ? 112 : 128;
-
-    // coefficients
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 2; j++)
-            for (k = 0; k < 2; k++)
-                for (l = 0; l < 6; l++)
-                    for (m = 0; m < 6; m++) {
-                        RK_U8 *pp = s->prob_ctx[s->framectxid].coef[i][j][k][l][m];
-                        RK_U32 *e = s->counts.eob[i][j][k][l][m];
-                        RK_U32 *c = s->counts.coef[i][j][k][l][m];
-
-                        if (l == 0 && m >= 3) // dc only has 3 pt
-                            break;
-                        /*  if(i == 0 && j == 0 && k== 1 && l == 0){
-                             mpp_log("e[0] = 0x%x e[1] = 0x%x c[0] = 0x%x c[1] = 0x%x c[2] = 0x%x \n",
-                             e[0],e[1],c[0],c[1],c[2]);
-                             mpp_log("pp[0] = 0x%x pp[1] = 0x%x pp[2] = 0x%x",pp[0],pp[1],pp[2]);
-                          }*/
-                        adapt_prob(&pp[0], e[0], e[1], 24, uf);
-                        adapt_prob(&pp[1], c[0], c[1] + c[2], 24, uf);
-                        adapt_prob(&pp[2], c[1], c[2], 24, uf);
-                        /* if(i == 0 && j == 0 && k== 1 && l == 0){
-                            mpp_log("after pp[0] = 0x%x pp[1] = 0x%x pp[2] = 0x%x",pp[0],pp[1],pp[2]);
-                         }*/
-                    }
 #ifdef dump
-    fwrite(&s->counts, 1, sizeof(s->counts), vp9_p_fp);
-    fflush(vp9_p_fp);
+    char filename[20] = "data/acoef";
+    if (vp9_p_fp2 != NULL) {
+        fclose(vp9_p_fp2);
+
+    }
+    sprintf(&filename[10], "%d.bin", dec_num);
+    vp9_p_fp2 = fopen(filename, "wb");
 #endif
 
-    if (s->keyframe || s->intraonly) {
-        memcpy(p->skip,  s->prob.p.skip,  sizeof(p->skip));
-        memcpy(p->tx32p, s->prob.p.tx32p, sizeof(p->tx32p));
-        memcpy(p->tx16p, s->prob.p.tx16p, sizeof(p->tx16p));
-        memcpy(p->tx8p,  s->prob.p.tx8p,  sizeof(p->tx8p));
-        return;
+    ret = read_uncompressed_header(ctx, data, size, refo);
+    if (ret < 0) {
+        mpp_err("read uncompressed header failed\n");
+        return ret;
     }
 
-    // skip flag
-    for (i = 0; i < 3; i++)
-        adapt_prob(&p->skip[i], s->counts.skip[i][0], s->counts.skip[i][1], 20, 128);
-
-    // intra/inter flag
-    for (i = 0; i < 4; i++)
-        adapt_prob(&p->intra[i], s->counts.intra[i][0], s->counts.intra[i][1], 20, 128);
-
-    // comppred flag
-    if (s->comppredmode == PRED_SWITCHABLE) {
-        for (i = 0; i < 5; i++)
-            adapt_prob(&p->comp[i], s->counts.comp[i][0], s->counts.comp[i][1], 20, 128);
+    const RK_U8 *aligned_data = mpp_align_get_bits(&s->gb);
+    ret = read_compressed_header(s, aligned_data, s->first_partition_size);
+    if (ret < 0) {
+        mpp_err("read compressed header failed\n");
+        return ret;
     }
 
-    // reference frames
-    if (s->comppredmode != PRED_SINGLEREF) {
-        for (i = 0; i < 5; i++)
-            adapt_prob(&p->comp_ref[i], s->counts.comp_ref[i][0],
-                       s->counts.comp_ref[i][1], 20, 128);
-    }
-
-    if (s->comppredmode != PRED_COMPREF) {
-        for (i = 0; i < 5; i++) {
-            RK_U8 *pp = p->single_ref[i];
-            RK_U32 (*c)[2] = s->counts.single_ref[i];
-
-            adapt_prob(&pp[0], c[0][0], c[0][1], 20, 128);
-            adapt_prob(&pp[1], c[1][0], c[1][1], 20, 128);
-        }
-    }
-
-    // block partitioning
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++) {
-            RK_U8 *pp = p->partition[i][j];
-            RK_U32 *c = s->counts.partition[i][j];
-            // mpp_log("befor pp[0] = 0x%x pp[1] = 0x%x pp[2] = 0x%x",pp[0],pp[1],pp[2]);
-            // mpp_log("befor c[0] = 0x%x c[1] = 0x%x c[2] = 0x%x",c[0],c[1],c[2]);
-            adapt_prob(&pp[0], c[0], c[1] + c[2] + c[3], 20, 128);
-            adapt_prob(&pp[1], c[1], c[2] + c[3], 20, 128);
-            adapt_prob(&pp[2], c[2], c[3], 20, 128);
-            // mpp_log(" after pp[0] = 0x%x pp[1] = 0x%x pp[2] = 0x%x",pp[0],pp[1],pp[2]);
-        }
-
-    // tx size
-    if (s->txfmmode == TX_SWITCHABLE) {
-        for (i = 0; i < 2; i++) {
-            RK_U32 *c16 = s->counts.tx16p[i], *c32 = s->counts.tx32p[i];
-
-            adapt_prob(&p->tx8p[i], s->counts.tx8p[i][0], s->counts.tx8p[i][1], 20, 128);
-            adapt_prob(&p->tx16p[i][0], c16[0], c16[1] + c16[2], 20, 128);
-            adapt_prob(&p->tx16p[i][1], c16[1], c16[2], 20, 128);
-            adapt_prob(&p->tx32p[i][0], c32[0], c32[1] + c32[2] + c32[3], 20, 128);
-            adapt_prob(&p->tx32p[i][1], c32[1], c32[2] + c32[3], 20, 128);
-            adapt_prob(&p->tx32p[i][2], c32[2], c32[3], 20, 128);
-        }
-    }
-
-    // interpolation filter
-    if (s->filtermode == FILTER_SWITCHABLE) {
-        for (i = 0; i < 4; i++) {
-            RK_U8 *pp = p->filter[i];
-            RK_U32 *c = s->counts.filter[i];
-
-            adapt_prob(&pp[0], c[0], c[1] + c[2], 20, 128);
-            adapt_prob(&pp[1], c[1], c[2], 20, 128);
-        }
-    }
-
-    // inter modes
-    for (i = 0; i < 7; i++) {
-        RK_U8 *pp = p->mv_mode[i];
-        RK_U32 *c = s->counts.mv_mode[i];
-
-        adapt_prob(&pp[0], c[2], c[1] + c[0] + c[3], 20, 128);
-        adapt_prob(&pp[1], c[0], c[1] + c[3], 20, 128);
-        adapt_prob(&pp[2], c[1], c[3], 20, 128);
-    }
-
-    // mv joints
-    {
-        RK_U8 *pp = p->mv_joint;
-        RK_U32 *c = s->counts.mv_joint;
-
-        adapt_prob(&pp[0], c[0], c[1] + c[2] + c[3], 20, 128);
-        adapt_prob(&pp[1], c[1], c[2] + c[3], 20, 128);
-        adapt_prob(&pp[2], c[2], c[3], 20, 128);
-    }
-
-    // mv components
-    for (i = 0; i < 2; i++) {
-        RK_U8 *pp;
-        RK_U32 *c, (*c2)[2], sum;
-
-        adapt_prob(&p->mv_comp[i].sign, s->counts.sign[i][0],
-                   s->counts.sign[i][1], 20, 128);
-
-        pp = p->mv_comp[i].classes;
-        c = s->counts.classes[i];
-        sum = c[1] + c[2] + c[3] + c[4] + c[5] + c[6] + c[7] + c[8] + c[9] + c[10];
-        adapt_prob(&pp[0], c[0], sum, 20, 128);
-        sum -= c[1];
-        adapt_prob(&pp[1], c[1], sum, 20, 128);
-        sum -= c[2] + c[3];
-        adapt_prob(&pp[2], c[2] + c[3], sum, 20, 128);
-        adapt_prob(&pp[3], c[2], c[3], 20, 128);
-        sum -= c[4] + c[5];
-        adapt_prob(&pp[4], c[4] + c[5], sum, 20, 128);
-        adapt_prob(&pp[5], c[4], c[5], 20, 128);
-        sum -= c[6];
-        adapt_prob(&pp[6], c[6], sum, 20, 128);
-        adapt_prob(&pp[7], c[7] + c[8], c[9] + c[10], 20, 128);
-        adapt_prob(&pp[8], c[7], c[8], 20, 128);
-        adapt_prob(&pp[9], c[9], c[10], 20, 128);
-
-        adapt_prob(&p->mv_comp[i].class0, s->counts.class0[i][0],
-                   s->counts.class0[i][1], 20, 128);
-        pp = p->mv_comp[i].bits;
-        c2 = s->counts.bits[i];
-        for (j = 0; j < 10; j++)
-            adapt_prob(&pp[j], c2[j][0], c2[j][1], 20, 128);
-
-        for (j = 0; j < 2; j++) {
-            pp = p->mv_comp[i].class0_fp[j];
-            c = s->counts.class0_fp[i][j];
-            adapt_prob(&pp[0], c[0], c[1] + c[2] + c[3], 20, 128);
-            adapt_prob(&pp[1], c[1], c[2] + c[3], 20, 128);
-            adapt_prob(&pp[2], c[2], c[3], 20, 128);
-        }
-        pp = p->mv_comp[i].fp;
-        c = s->counts.fp[i];
-        adapt_prob(&pp[0], c[0], c[1] + c[2] + c[3], 20, 128);
-        adapt_prob(&pp[1], c[1], c[2] + c[3], 20, 128);
-        adapt_prob(&pp[2], c[2], c[3], 20, 128);
-
-        if (s->highprecisionmvs) {
-            adapt_prob(&p->mv_comp[i].class0_hp, s->counts.class0_hp[i][0],
-                       s->counts.class0_hp[i][1], 20, 128);
-            adapt_prob(&p->mv_comp[i].hp, s->counts.hp[i][0],
-                       s->counts.hp[i][1], 20, 128);
-        }
-    }
-
-    // y intra modes
-    for (i = 0; i < 4; i++) {
-        RK_U8 *pp = p->y_mode[i];
-        RK_U32 *c = s->counts.y_mode[i], sum, s2;
-
-        sum = c[0] + c[1] + c[3] + c[4] + c[5] + c[6] + c[7] + c[8] + c[9];
-        adapt_prob(&pp[0], c[DC_PRED], sum, 20, 128);
-        sum -= c[TM_VP8_PRED];
-        adapt_prob(&pp[1], c[TM_VP8_PRED], sum, 20, 128);
-        sum -= c[VERT_PRED];
-        adapt_prob(&pp[2], c[VERT_PRED], sum, 20, 128);
-        s2 = c[HOR_PRED] + c[DIAG_DOWN_RIGHT_PRED] + c[VERT_RIGHT_PRED];
-        sum -= s2;
-        adapt_prob(&pp[3], s2, sum, 20, 128);
-        s2 -= c[HOR_PRED];
-        adapt_prob(&pp[4], c[HOR_PRED], s2, 20, 128);
-        adapt_prob(&pp[5], c[DIAG_DOWN_RIGHT_PRED], c[VERT_RIGHT_PRED], 20, 128);
-        sum -= c[DIAG_DOWN_LEFT_PRED];
-        adapt_prob(&pp[6], c[DIAG_DOWN_LEFT_PRED], sum, 20, 128);
-        sum -= c[VERT_LEFT_PRED];
-        adapt_prob(&pp[7], c[VERT_LEFT_PRED], sum, 20, 128);
-        adapt_prob(&pp[8], c[HOR_DOWN_PRED], c[HOR_UP_PRED], 20, 128);
-    }
-
-    // uv intra modes
-    for (i = 0; i < 10; i++) {
-        RK_U8 *pp = p->uv_mode[i];
-        RK_U32 *c = s->counts.uv_mode[i], sum, s2;
-
-        sum = c[0] + c[1] + c[3] + c[4] + c[5] + c[6] + c[7] + c[8] + c[9];
-        adapt_prob(&pp[0], c[DC_PRED], sum, 20, 128);
-        sum -= c[TM_VP8_PRED];
-        adapt_prob(&pp[1], c[TM_VP8_PRED], sum, 20, 128);
-        sum -= c[VERT_PRED];
-        adapt_prob(&pp[2], c[VERT_PRED], sum, 20, 128);
-        s2 = c[HOR_PRED] + c[DIAG_DOWN_RIGHT_PRED] + c[VERT_RIGHT_PRED];
-        sum -= s2;
-        adapt_prob(&pp[3], s2, sum, 20, 128);
-        s2 -= c[HOR_PRED];
-        adapt_prob(&pp[4], c[HOR_PRED], s2, 20, 128);
-        adapt_prob(&pp[5], c[DIAG_DOWN_RIGHT_PRED], c[VERT_RIGHT_PRED], 20, 128);
-        sum -= c[DIAG_DOWN_LEFT_PRED];
-        adapt_prob(&pp[6], c[DIAG_DOWN_LEFT_PRED], sum, 20, 128);
-        sum -= c[VERT_LEFT_PRED];
-        adapt_prob(&pp[7], c[VERT_LEFT_PRED], sum, 20, 128);
-        adapt_prob(&pp[8], c[HOR_DOWN_PRED], c[HOR_UP_PRED], 20, 128);
-    }
-#if 0 //def dump
-    fwrite(s->counts.y_mode, 1, sizeof(s->counts.y_mode), vp9_p_fp1);
-    fwrite(s->counts.uv_mode, 1, sizeof(s->counts.uv_mode), vp9_p_fp1);
-    fflush(vp9_p_fp1);
-#endif
+    return MPP_OK;
 }
 
+#define TRANS_TO_HW_STYLE(uv_mode)                          \
+do{                                                         \
+    RK_U8 *uv_ptr = NULL;                                   \
+    RK_U8 uv_mode_prob[10][9];                              \
+    for (i = 0; i < 10; i++) {                              \
+        if (i == 0) {                                       \
+            uv_ptr = uv_mode[2];                            \
+        } else if ( i == 1) {                               \
+            uv_ptr = uv_mode[0];                            \
+        }  else if ( i == 2) {                              \
+            uv_ptr = uv_mode[1];                            \
+        }  else if ( i == 7) {                              \
+            uv_ptr = uv_mode[8];                            \
+        } else if (i == 8) {                                \
+            uv_ptr = uv_mode[7];                            \
+        } else {                                            \
+            uv_ptr = uv_mode[i];                            \
+        }                                                   \
+        memcpy(&uv_mode_prob[i], uv_ptr, 9);                \
+    }                                                       \
+    memcpy(uv_mode, uv_mode_prob, sizeof(uv_mode_prob));    \
+}while(0)
 
-RK_S32 vp9_parser_frame(Vp9CodecContext *ctx, HalDecTask *task)
+static RK_S32 vp9d_fill_segmentation(VP9Context *s, DXVA_segmentation_VP9 *seg)
 {
+    RK_S32 i;
 
+    seg->enabled = s->segmentation.enabled;
+    seg->update_map = s->segmentation.update_map;
+    seg->temporal_update = s->segmentation.temporal;
+    seg->abs_delta = s->segmentation.absolute_vals;
+    seg->ReservedSegmentFlags4Bits = 0;
+
+    for (i = 0; i < 7; i++) {
+        seg->tree_probs[i] = s->prob.seg[i];
+    }
+
+    seg->pred_probs[0] = s->prob.segpred[0];
+    seg->pred_probs[1] = s->prob.segpred[1];
+    seg->pred_probs[2] = s->prob.segpred[2];
+
+    for (i = 0; i < 8; i++) {
+        seg->feature_data[i][0] = s->segmentation.feat[i].q_val;
+        seg->feature_data[i][1] = s->segmentation.feat[i].lf_val;
+        seg->feature_data[i][2] = s->segmentation.feat[i].ref_val;
+        seg->feature_data[i][3] = s->segmentation.feat[i].skip_enabled;
+        seg->feature_mask[i] = s->segmentation.feat[i].q_enabled
+                               | (s->segmentation.feat[i].lf_enabled << 1)
+                               | (s->segmentation.feat[i].ref_enabled << 2)
+                               | (s->segmentation.feat[i].skip_enabled << 3);
+#if 0
+        mpp_log("seg->feature_data[%d][0] = 0x%x", i, seg->feature_data[i][0]);
+
+        mpp_log("seg->feature_data[%d][1] = 0x%x", i, seg->feature_data[i][0]);
+
+        mpp_log("seg->feature_data[%d][2] = 0x%x", i, seg->feature_data[i][0]);
+
+        mpp_log("seg->feature_data[%d][3] = 0x%x", i, seg->feature_data[i][0]);
+        mpp_log("seg->feature_mask[%d] = 0x%x", i, seg->feature_mask[i]);
+#endif
+    }
+
+    return 0;
+}
+
+static RK_S32 vp9d_fill_picparams(Vp9DecCtx *ctx, DXVA_PicParams_VP9 *pic)
+{
+    VP9Context *s = ctx->priv_data;
+    RK_U8 partition_probs[16][3];
+    RK_U8 partition_probs_flag[16][3];
+    RK_U8 partition_probs_delata[16][3];
+    DXVA_prob_vp9* prob_flag = &pic->prob_flag_delta.p_flag;
+    DXVA_prob_vp9* prob_delta = &pic->prob_flag_delta.p_delta;
+    RK_S32 i;
+
+    pic->profile = ctx->profile;
+    pic->show_existing_frame = s->show_existing_frame;
+    pic->frame_type = !s->keyframe;
+    pic->show_frame = !s->show_frame_flag;
+    pic->error_resilient_mode =  s->error_res_mode;
+    pic->subsampling_x = s->subsampling_x;
+    pic->subsampling_y = s->subsampling_y;
+    pic->extra_plane = s->extra_plane;
+    pic->refresh_frame_context = s->refresh_frame_context;
+    pic->intra_only = s->intraonly;
+    pic->frame_context_idx = s->frame_context_idx;
+    pic->reset_frame_context = s->resetctx;
+    pic->allow_high_precision_mv = s->allow_high_precision_mv;
+    pic->parallelmode = s->frame_parallel_mode;
+    pic->width = ctx->width;
+    pic->height = ctx->height;
+    pic->BitDepthMinus8Luma = s->bpp - 8;
+    pic->BitDepthMinus8Chroma = s->bpp - 8;
+    pic->interp_filter = s->interp_filter;
+    pic->CurrPic.Index7Bits = s->frames[VP9_CUR_FRAME].slot_index;
+
+    for (i = 0; i < 8; i++) {
+        pic->ref_frame_map[i].Index7Bits = s->refs[i].slot_index;
+        pic->ref_frame_coded_width[i] = mpp_frame_get_width(s->refs[i].f);
+        pic->ref_frame_coded_height[i] = mpp_frame_get_height(s->refs[i].f);
+    }
+    pic->frame_refs[0].Index7Bits =  s->refidx[0];
+    pic->frame_refs[1].Index7Bits =  s->refidx[1];
+    pic->frame_refs[2].Index7Bits =  s->refidx[2];
+    pic->ref_frame_sign_bias[1] = s->signbias[0];
+    pic->ref_frame_sign_bias[2] = s->signbias[1];
+    pic->ref_frame_sign_bias[3] = s->signbias[2];
+    pic->filter_level = s->filter.level;
+    pic->sharpness_level = s->filter.sharpness;
+    pic->mode_ref_delta_enabled = s->lf_delta.enabled;
+    pic->mode_ref_delta_update = s->lf_delta.update;
+    pic->use_prev_in_find_mv_refs = s->use_last_frame_mvs;
+    pic->ref_deltas[0] = s->lf_delta.ref[0];
+    pic->ref_deltas[1] = s->lf_delta.ref[1];
+    pic->ref_deltas[2] = s->lf_delta.ref[2];
+    pic->ref_deltas[3] = s->lf_delta.ref[3];
+    pic->mode_deltas[0] = s->lf_delta.mode[0];
+    pic->mode_deltas[1] = s->lf_delta.mode[1];
+    pic->base_qindex = s->base_qindex;
+    pic->y_dc_delta_q = s->y_dc_delta_q;
+    pic->uv_dc_delta_q = s->uv_dc_delta_q;
+    pic->uv_ac_delta_q = s->uv_ac_delta_q;
+    pic->txmode = s->txfmmode;
+    pic->refmode = s->comppredmode;
+    vp9d_fill_segmentation(s, &pic->stVP9Segments);
+    pic->log2_tile_cols = s->tiling.log2_tile_cols;
+    pic->log2_tile_rows = s->tiling.log2_tile_rows;
+    pic->first_partition_size = s->first_partition_size;
+    pic->uncompressed_header_size_byte_aligned = s->uncompress_head_size_in_byte;
+    memcpy(pic->mvscale, s->mvscale, sizeof(s->mvscale));
+    memcpy(&pic->prob, &s->prob, sizeof(pic->prob));
+    memcpy(&pic->prob_flag_delta, &s->prob_flag_delta, sizeof(pic->prob_flag_delta));
+    {
+        /*change partition to hardware need style*/
+        /*
+              hardware            syntax
+          *+++++8x8+++++*     *++++64x64++++*
+          *+++++16x16+++*     *++++32x32++++*
+          *+++++32x32+++*     *++++16x16++++*
+          *+++++64x64+++*     *++++8x8++++++*
+        */
+        RK_U32 m = 0;
+        RK_U32 len = sizeof(pic->prob.partition[0]);
+        RK_U32 step = len / sizeof(partition_probs[0]);
+
+        for (i = MPP_ARRAY_ELEMS(pic->prob.partition) - 1; i >= 0; i--) {
+            memcpy(&partition_probs[m][0], &pic->prob.partition[i][0][0], len);
+            memcpy(&partition_probs_flag[m][0], &prob_flag->partition[i][0][0], len);
+            memcpy(&partition_probs_delata[m][0], &prob_delta->partition[i][0][0], len);
+            m += step;
+        }
+        memcpy(pic->prob.partition, partition_probs, sizeof(partition_probs));
+        memcpy(prob_flag->partition, partition_probs_flag, sizeof(partition_probs_flag));
+        memcpy(prob_delta->partition, partition_probs_delata, sizeof(partition_probs_delata));
+
+        /*change uv_mode to hardware need style*/
+        /*
+            hardware              syntax
+         *+++++ dc  ++++*     *++++ v   ++++*
+         *+++++ v   ++++*     *++++ h   ++++*
+         *+++++ h   ++++*     *++++ dc  ++++*
+         *+++++ d45 ++++*     *++++ d45 ++++*
+         *+++++ d135++++*     *++++ d135++++*
+         *+++++ d117++++*     *++++ d117++++*
+         *+++++ d153++++*     *++++ d153++++*
+         *+++++ d207++++*     *++++ d63 ++++*
+         *+++++ d63 ++++*     *++++ d207++++*
+         *+++++ tm  ++++*     *++++ tm  ++++*
+        */
+
+        TRANS_TO_HW_STYLE(pic->prob.uv_mode);
+        TRANS_TO_HW_STYLE(prob_flag->uv_mode);
+        TRANS_TO_HW_STYLE(prob_delta->uv_mode);
+    }
+    return 0;
+}
+
+RK_S32 vp9_parser_frame(Vp9DecCtx *ctx, HalDecTask *task)
+{
     const RK_U8 *data = NULL;
     RK_S32 size = 0;
     VP9Context *s = (VP9Context *)ctx->priv_data;
-    RK_S32 res, i, ref = 0;
+    RK_S32 ret;
+    RK_S32 i, ref = 0;
 
     vp9d_dbg(VP9D_DBG_FUNCTION, "%s", __FUNCTION__);
     task->valid = -1;
@@ -1663,9 +1426,14 @@ RK_S32 vp9_parser_frame(Vp9CodecContext *ctx, HalDecTask *task)
     if (size <= 0) {
         return MPP_OK;
     }
-    if ((res = decode_parser_header(ctx, data, size, &ref)) < 0) {
-        return res;
-    } else if (res == 0) {
+    ret = decode_parser_header(ctx, data, size, &ref);
+    if (ret < 0)
+        return ret;
+
+    RK_S32 head_size = s->first_partition_size + (RK_S32)s->uncompress_head_size_in_byte;
+    vp9d_dbg(VP9D_DBG_HEADER, "%s end, head_size %d\n", __FUNCTION__, head_size);
+
+    if (head_size == 0) {
         if (!s->refs[ref].ref) {
             //mpp_err("Requested reference %d not available\n", ref);
             return -1;//AVERROR_INVALIDDATA;
@@ -1684,24 +1452,27 @@ RK_S32 vp9_parser_frame(Vp9CodecContext *ctx, HalDecTask *task)
         mpp_log("out repeat num %d", s->outframe_num++);
         return size;
     }
-    data += res;
-    size -= res;
+    data += head_size;
+    size -= head_size;
 
-    if (s->frames[REF_FRAME_MVPAIR].ref)
-        vp9_unref_frame(s, &s->frames[REF_FRAME_MVPAIR]);
+    if (s->frames[VP9_REF_FRAME_MVPAIR].ref)
+        vp9_unref_frame(s, &s->frames[VP9_REF_FRAME_MVPAIR]);
 
-    if (!s->intraonly && !s->keyframe && !s->errorres && s->frames[CUR_FRAME].ref) {
-        if ((res = vp9_ref_frame(ctx, &s->frames[REF_FRAME_MVPAIR], &s->frames[CUR_FRAME])) < 0)
-            return res;
+    if (!s->intraonly && !s->keyframe && !s->error_res_mode && s->frames[VP9_CUR_FRAME].ref) {
+        ret = vp9_ref_frame(ctx, &s->frames[VP9_REF_FRAME_MVPAIR], &s->frames[VP9_CUR_FRAME]);
+        if (ret < 0)
+            return ret;
     }
 
-    if (s->frames[CUR_FRAME].ref)
-        vp9_unref_frame(s, &s->frames[CUR_FRAME]);
+    if (s->frames[VP9_CUR_FRAME].ref)
+        vp9_unref_frame(s, &s->frames[VP9_CUR_FRAME]);
 
-    if ((res = vp9_alloc_frame(ctx, &s->frames[CUR_FRAME])) < 0)
-        return res;
+    ret = vp9_alloc_frame(ctx, &s->frames[VP9_CUR_FRAME]);
+    if (ret < 0)
+        return ret;
 
-    if (s->refreshctx && s->parallelmode) {
+    // if context need refresh, copy prob_ctx
+    if (s->refresh_frame_context && s->frame_parallel_mode) {
         RK_S32 j, k, l, m;
 
         for (i = 0; i < 4; i++) {
@@ -1709,25 +1480,26 @@ RK_S32 vp9_parser_frame(Vp9CodecContext *ctx, HalDecTask *task)
                 for (k = 0; k < 2; k++)
                     for (l = 0; l < 6; l++)
                         for (m = 0; m < 6; m++)
-                            memcpy(s->prob_ctx[s->framectxid].coef[i][j][k][l][m],
+                            memcpy(s->prob_ctx[s->frame_context_idx].coef[i][j][k][l][m],
                                    s->prob.coef[i][j][k][l][m], 3);
             if ((RK_S32)s->txfmmode == i)
                 break;
         }
-        s->prob_ctx[s->framectxid].p = s->prob.p;
+        s->prob_ctx[s->frame_context_idx].p = s->prob.p;
     }
 
-    vp9d_parser2_syntax(ctx);
-
+    vp9d_fill_picparams(ctx, &ctx->pic_params);
+    // set task
     task->syntax.data = (void*)&ctx->pic_params;
     task->syntax.number = 1;
     task->valid = 1;
-    task->output = s->frames[CUR_FRAME].slot_index;
+    task->output = s->frames[VP9_CUR_FRAME].slot_index;
     task->input_packet = ctx->pkt;
 
     for (i = 0; i < 3; i++) {
         if (s->refs[s->refidx[i]].slot_index < 0x7f) {
             MppFrame mframe = NULL;
+
             mpp_buf_slot_set_flag(s->slots, s->refs[s->refidx[i]].slot_index, SLOT_HAL_INPUT);
             task->refer[i] = s->refs[s->refidx[i]].slot_index;
             mpp_buf_slot_get_prop(s->slots, task->refer[i], SLOT_FRAME_PTR, &mframe);
@@ -1743,12 +1515,12 @@ RK_S32 vp9_parser_frame(Vp9CodecContext *ctx, HalDecTask *task)
         task->flags.eos = 1;
     }
 
-    if (!s->invisible) {
-        mpp_buf_slot_set_flag(s->slots,  s->frames[CUR_FRAME].slot_index, SLOT_QUEUE_USE);
-        mpp_buf_slot_enqueue(s->slots, s->frames[CUR_FRAME].slot_index, QUEUE_DISPLAY);
+    if (!s->show_frame_flag) {
+        mpp_buf_slot_set_flag(s->slots,  s->frames[VP9_CUR_FRAME].slot_index, SLOT_QUEUE_USE);
+        mpp_buf_slot_enqueue(s->slots, s->frames[VP9_CUR_FRAME].slot_index, QUEUE_DISPLAY);
     }
-    vp9d_dbg(VP9D_DBG_REF, "s->refreshrefmask = %d s->frames[CUR_FRAME] = %d",
-             s->refreshrefmask, s->frames[CUR_FRAME].slot_index);
+    vp9d_dbg(VP9D_DBG_REF, "s->refresh_frame_flags = %d s->frames[VP9_CUR_FRAME] = %d",
+             s->refresh_frame_flags, s->frames[VP9_CUR_FRAME].slot_index);
     for (i = 0; i < 3; i++) {
         if (s->refs[s->refidx[i]].ref != NULL) {
             vp9d_dbg(VP9D_DBG_REF, "ref buf select %d", s->refs[s->refidx[i]].slot_index);
@@ -1756,29 +1528,29 @@ RK_S32 vp9_parser_frame(Vp9CodecContext *ctx, HalDecTask *task)
     }
     // ref frame setup
     for (i = 0; i < 8; i++) {
-        vp9d_dbg(VP9D_DBG_REF, "s->refreshrefmask = 0x%x", s->refreshrefmask);
-        res = 0;
-        if (s->refreshrefmask & (1 << i)) {
+        vp9d_dbg(VP9D_DBG_REF, "s->refresh_frame_flags = 0x%x", s->refresh_frame_flags);
+        ret = 0;
+        if (s->refresh_frame_flags & (1 << i)) {
             if (s->refs[i].ref)
                 vp9_unref_frame(s, &s->refs[i]);
             vp9d_dbg(VP9D_DBG_REF, "update ref index in %d", i);
-            res = vp9_ref_frame(ctx, &s->refs[i], &s->frames[CUR_FRAME]);
+            ret = vp9_ref_frame(ctx, &s->refs[i], &s->frames[VP9_CUR_FRAME]);
         }
 
         if (s->refs[i].ref)
             vp9d_dbg(VP9D_DBG_REF, "s->refs[%d] = %d", i, s->refs[i].slot_index);
-        if (res < 0)
-            return 0;
+        if (ret < 0)
+            return 0/*ret*/;
     }
     return 0;
 }
 
-MPP_RET vp9d_paser_reset(Vp9CodecContext *ctx)
+MPP_RET vp9d_paser_reset(Vp9DecCtx *ctx)
 {
-    RK_S32 i;
     VP9Context *s = ctx->priv_data;
-    SplitContext_t *ps = (SplitContext_t *)ctx->priv_data2;
-    VP9ParseContext *pc = (VP9ParseContext *)ps->priv_data;
+    VP9SplitCtx *ps = (VP9SplitCtx *)ctx->priv_data2;
+    VP9ParseCtx *pc = (VP9ParseCtx *)ps->priv_data;
+    RK_S32 i;
 
     s->got_keyframes = 0;
     s->cur_poc = 0;
@@ -1792,7 +1564,7 @@ MPP_RET vp9d_paser_reset(Vp9CodecContext *ctx)
             vp9_unref_frame(s, &s->refs[i]);
         }
     }
-    memset(pc, 0, sizeof(VP9ParseContext));
+    memset(pc, 0, sizeof(VP9ParseCtx));
 
     s->eos = 0;
     if (ps) {
@@ -1844,7 +1616,6 @@ static void inv_count_data(VP9Context *s)
             }
         }
 
-
         memcpy(count_uv, s->counts.uv_mode, sizeof(s->counts.uv_mode));
 
         /*change uv_mode to hardware need style*/
@@ -1864,6 +1635,7 @@ static void inv_count_data(VP9Context *s)
         for (i = 0; i < 10; i++) {
             RK_U32 *src_uv = (RK_U32 *)(count_uv[i]);
             RK_U32 value = 0;
+
             if (i == 0) {
                 dst_uv = s->counts.uv_mode[2]; //dc
             } else if ( i == 1) {
@@ -1897,7 +1669,237 @@ static void inv_count_data(VP9Context *s)
     }
 }
 
-void vp9_parser_update(Vp9CodecContext *ctx, void *count_info)
+static void adapt_coef_probs(VP9Context *s)
+{
+    Vp9ProbCtx *p = &s->prob_ctx[s->frame_context_idx].p;
+    RK_S32 uf = (s->keyframe || s->intraonly || !s->last_keyframe) ? 112 : 128;
+    RK_S32 i, j, k, l, m;
+
+    // coefficients
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 2; j++)
+            for (k = 0; k < 2; k++)
+                for (l = 0; l < 6; l++)
+                    for (m = 0; m < 6; m++) {
+                        RK_U8 *pp = s->prob_ctx[s->frame_context_idx].coef[i][j][k][l][m];
+                        RK_U32 *e = s->counts.eob[i][j][k][l][m];
+                        RK_U32 *c = s->counts.coef[i][j][k][l][m];
+
+                        if (l == 0 && m >= 3) // dc only has 3 pt
+                            break;
+                        vp9d_merge_prob(&pp[0], e[0], e[1], 24, uf);
+                        vp9d_merge_prob(&pp[1], c[0], c[1] + c[2], 24, uf);
+                        vp9d_merge_prob(&pp[2], c[1], c[2], 24, uf);
+                    }
+#ifdef dump
+    fwrite(&s->counts, 1, sizeof(s->counts), vp9_p_fp);
+    fflush(vp9_p_fp);
+#endif
+
+    if (s->keyframe || s->intraonly) {
+        memcpy(p->skip,  s->prob.p.skip,  sizeof(p->skip));
+        memcpy(p->tx32p, s->prob.p.tx32p, sizeof(p->tx32p));
+        memcpy(p->tx16p, s->prob.p.tx16p, sizeof(p->tx16p));
+        memcpy(p->tx8p,  s->prob.p.tx8p,  sizeof(p->tx8p));
+        return;
+    }
+
+    // skip flag
+    for (i = 0; i < 3; i++)
+        vp9d_merge_prob(&p->skip[i], s->counts.skip[i][0], s->counts.skip[i][1], 20, 128);
+
+    // intra/inter flag
+    for (i = 0; i < 4; i++)
+        vp9d_merge_prob(&p->intra[i], s->counts.intra[i][0], s->counts.intra[i][1], 20, 128);
+
+    // comppred flag
+    if (s->comppredmode == VP9_PRED_SWITCHABLE) {
+        for (i = 0; i < 5; i++)
+            vp9d_merge_prob(&p->comp[i], s->counts.comp[i][0], s->counts.comp[i][1], 20, 128);
+    }
+
+    // reference frames
+    if (s->comppredmode != VP9_PRED_SINGLEREF) {
+        for (i = 0; i < 5; i++)
+            vp9d_merge_prob(&p->comp_ref[i], s->counts.comp_ref[i][0],
+                            s->counts.comp_ref[i][1], 20, 128);
+    }
+
+    if (s->comppredmode != VP9_PRED_COMPREF) {
+        for (i = 0; i < 5; i++) {
+            RK_U8 *pp = p->single_ref[i];
+            RK_U32 (*c)[2] = s->counts.single_ref[i];
+
+            vp9d_merge_prob(&pp[0], c[0][0], c[0][1], 20, 128);
+            vp9d_merge_prob(&pp[1], c[1][0], c[1][1], 20, 128);
+        }
+    }
+
+    // block partitioning
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++) {
+            RK_U8 *pp = p->partition[i][j];
+            RK_U32 *c = s->counts.partition[i][j];
+
+            vp9d_merge_prob(&pp[0], c[0], c[1] + c[2] + c[3], 20, 128);
+            vp9d_merge_prob(&pp[1], c[1], c[2] + c[3], 20, 128);
+            vp9d_merge_prob(&pp[2], c[2], c[3], 20, 128);
+        }
+
+    // tx size
+    if (s->txfmmode == VP9_TX_SWITCHABLE) {
+        for (i = 0; i < 2; i++) {
+            RK_U32 *c16 = s->counts.tx16p[i], *c32 = s->counts.tx32p[i];
+
+            vp9d_merge_prob(&p->tx8p[i], s->counts.tx8p[i][0], s->counts.tx8p[i][1], 20, 128);
+            vp9d_merge_prob(&p->tx16p[i][0], c16[0], c16[1] + c16[2], 20, 128);
+            vp9d_merge_prob(&p->tx16p[i][1], c16[1], c16[2], 20, 128);
+            vp9d_merge_prob(&p->tx32p[i][0], c32[0], c32[1] + c32[2] + c32[3], 20, 128);
+            vp9d_merge_prob(&p->tx32p[i][1], c32[1], c32[2] + c32[3], 20, 128);
+            vp9d_merge_prob(&p->tx32p[i][2], c32[2], c32[3], 20, 128);
+        }
+    }
+
+    // interpolation filter
+    if (s->interp_filter == VP9_FILTER_SWITCHABLE) {
+        for (i = 0; i < 4; i++) {
+            RK_U8 *pp = p->filter[i];
+            RK_U32 *c = s->counts.filter[i];
+
+            vp9d_merge_prob(&pp[0], c[0], c[1] + c[2], 20, 128);
+            vp9d_merge_prob(&pp[1], c[1], c[2], 20, 128);
+        }
+    }
+
+    // inter modes
+    for (i = 0; i < 7; i++) {
+        RK_U8 *pp = p->mv_mode[i];
+        RK_U32 *c = s->counts.mv_mode[i];
+
+        vp9d_merge_prob(&pp[0], c[2], c[1] + c[0] + c[3], 20, 128);
+        vp9d_merge_prob(&pp[1], c[0], c[1] + c[3], 20, 128);
+        vp9d_merge_prob(&pp[2], c[1], c[3], 20, 128);
+    }
+
+    // mv joints
+    {
+        RK_U8 *pp = p->mv_joint;
+        RK_U32 *c = s->counts.mv_joint;
+
+        vp9d_merge_prob(&pp[0], c[0], c[1] + c[2] + c[3], 20, 128);
+        vp9d_merge_prob(&pp[1], c[1], c[2] + c[3], 20, 128);
+        vp9d_merge_prob(&pp[2], c[2], c[3], 20, 128);
+    }
+
+    // mv components
+    for (i = 0; i < 2; i++) {
+        RK_U8 *pp;
+        RK_U32 *c, (*c2)[2], sum;
+
+        vp9d_merge_prob(&p->mv_comp[i].sign, s->counts.sign[i][0],
+                        s->counts.sign[i][1], 20, 128);
+
+        pp = p->mv_comp[i].classes;
+        c = s->counts.classes[i];
+        sum = c[1] + c[2] + c[3] + c[4] + c[5] + c[6] + c[7] + c[8] + c[9] + c[10];
+        vp9d_merge_prob(&pp[0], c[0], sum, 20, 128);
+        sum -= c[1];
+        vp9d_merge_prob(&pp[1], c[1], sum, 20, 128);
+        sum -= c[2] + c[3];
+        vp9d_merge_prob(&pp[2], c[2] + c[3], sum, 20, 128);
+        vp9d_merge_prob(&pp[3], c[2], c[3], 20, 128);
+        sum -= c[4] + c[5];
+        vp9d_merge_prob(&pp[4], c[4] + c[5], sum, 20, 128);
+        vp9d_merge_prob(&pp[5], c[4], c[5], 20, 128);
+        sum -= c[6];
+        vp9d_merge_prob(&pp[6], c[6], sum, 20, 128);
+        vp9d_merge_prob(&pp[7], c[7] + c[8], c[9] + c[10], 20, 128);
+        vp9d_merge_prob(&pp[8], c[7], c[8], 20, 128);
+        vp9d_merge_prob(&pp[9], c[9], c[10], 20, 128);
+
+        vp9d_merge_prob(&p->mv_comp[i].class0, s->counts.class0[i][0],
+                        s->counts.class0[i][1], 20, 128);
+        pp = p->mv_comp[i].bits;
+        c2 = s->counts.bits[i];
+        for (j = 0; j < 10; j++)
+            vp9d_merge_prob(&pp[j], c2[j][0], c2[j][1], 20, 128);
+
+        for (j = 0; j < 2; j++) {
+            pp = p->mv_comp[i].class0_fp[j];
+            c = s->counts.class0_fp[i][j];
+            vp9d_merge_prob(&pp[0], c[0], c[1] + c[2] + c[3], 20, 128);
+            vp9d_merge_prob(&pp[1], c[1], c[2] + c[3], 20, 128);
+            vp9d_merge_prob(&pp[2], c[2], c[3], 20, 128);
+        }
+        pp = p->mv_comp[i].fp;
+        c = s->counts.fp[i];
+        vp9d_merge_prob(&pp[0], c[0], c[1] + c[2] + c[3], 20, 128);
+        vp9d_merge_prob(&pp[1], c[1], c[2] + c[3], 20, 128);
+        vp9d_merge_prob(&pp[2], c[2], c[3], 20, 128);
+
+        if (s->allow_high_precision_mv) {
+            vp9d_merge_prob(&p->mv_comp[i].class0_hp, s->counts.class0_hp[i][0],
+                            s->counts.class0_hp[i][1], 20, 128);
+            vp9d_merge_prob(&p->mv_comp[i].hp, s->counts.hp[i][0],
+                            s->counts.hp[i][1], 20, 128);
+        }
+    }
+
+    // y intra modes
+    for (i = 0; i < 4; i++) {
+        RK_U8 *pp = p->y_mode[i];
+        RK_U32 *c = s->counts.y_mode[i], sum, s2;
+
+        sum = c[0] + c[1] + c[3] + c[4] + c[5] + c[6] + c[7] + c[8] + c[9];
+        vp9d_merge_prob(&pp[0], c[VP9_DC_PRED], sum, 20, 128);
+        sum -= c[VP9_TM_VP8_PRED];
+        vp9d_merge_prob(&pp[1], c[VP9_TM_VP8_PRED], sum, 20, 128);
+        sum -= c[VP9_VERT_PRED];
+        vp9d_merge_prob(&pp[2], c[VP9_VERT_PRED], sum, 20, 128);
+        s2 = c[VP9_HOR_PRED] + c[VP9_DIAG_DOWN_RIGHT_PRED] + c[VP9_VERT_RIGHT_PRED];
+        sum -= s2;
+        vp9d_merge_prob(&pp[3], s2, sum, 20, 128);
+        s2 -= c[VP9_HOR_PRED];
+        vp9d_merge_prob(&pp[4], c[VP9_HOR_PRED], s2, 20, 128);
+        vp9d_merge_prob(&pp[5], c[VP9_DIAG_DOWN_RIGHT_PRED], c[VP9_VERT_RIGHT_PRED], 20, 128);
+        sum -= c[VP9_DIAG_DOWN_LEFT_PRED];
+        vp9d_merge_prob(&pp[6], c[VP9_DIAG_DOWN_LEFT_PRED], sum, 20, 128);
+        sum -= c[VP9_VERT_LEFT_PRED];
+        vp9d_merge_prob(&pp[7], c[VP9_VERT_LEFT_PRED], sum, 20, 128);
+        vp9d_merge_prob(&pp[8], c[VP9_HOR_DOWN_PRED], c[VP9_HOR_UP_PRED], 20, 128);
+    }
+
+    // uv intra modes
+    for (i = 0; i < 10; i++) {
+        RK_U8 *pp = p->uv_mode[i];
+        RK_U32 *c = s->counts.uv_mode[i], sum, s2;
+
+        sum = c[0] + c[1] + c[3] + c[4] + c[5] + c[6] + c[7] + c[8] + c[9];
+        vp9d_merge_prob(&pp[0], c[VP9_DC_PRED], sum, 20, 128);
+        sum -= c[VP9_TM_VP8_PRED];
+        vp9d_merge_prob(&pp[1], c[VP9_TM_VP8_PRED], sum, 20, 128);
+        sum -= c[VP9_VERT_PRED];
+        vp9d_merge_prob(&pp[2], c[VP9_VERT_PRED], sum, 20, 128);
+        s2 = c[VP9_HOR_PRED] + c[VP9_DIAG_DOWN_RIGHT_PRED] + c[VP9_VERT_RIGHT_PRED];
+        sum -= s2;
+        vp9d_merge_prob(&pp[3], s2, sum, 20, 128);
+        s2 -= c[VP9_HOR_PRED];
+        vp9d_merge_prob(&pp[4], c[VP9_HOR_PRED], s2, 20, 128);
+        vp9d_merge_prob(&pp[5], c[VP9_DIAG_DOWN_RIGHT_PRED], c[VP9_VERT_RIGHT_PRED], 20, 128);
+        sum -= c[VP9_DIAG_DOWN_LEFT_PRED];
+        vp9d_merge_prob(&pp[6], c[VP9_DIAG_DOWN_LEFT_PRED], sum, 20, 128);
+        sum -= c[VP9_VERT_LEFT_PRED];
+        vp9d_merge_prob(&pp[7], c[VP9_VERT_LEFT_PRED], sum, 20, 128);
+        vp9d_merge_prob(&pp[8], c[VP9_HOR_DOWN_PRED], c[VP9_HOR_UP_PRED], 20, 128);
+    }
+#if 0 //def dump
+    fwrite(s->counts.y_mode, 1, sizeof(s->counts.y_mode), vp9_p_fp1);
+    fwrite(s->counts.uv_mode, 1, sizeof(s->counts.uv_mode), vp9_p_fp1);
+    fflush(vp9_p_fp1);
+#endif
+}
+
+MPP_RET vp9_parser_update(Vp9DecCtx *ctx, void *count_info)
 {
     VP9Context *s = ctx->priv_data;
 
@@ -1923,15 +1925,15 @@ void vp9_parser_update(Vp9CodecContext *ctx, void *count_info)
 
         memcpy((void *)&s->counts, count_info, sizeof(s->counts));
 
-        if (s->refreshctx && !s->parallelmode) {
+        if (s->refresh_frame_context && !s->frame_parallel_mode) {
 #ifdef dump
             count++;
 #endif
             inv_count_data(s);
-            adapt_probs(s);
+            adapt_coef_probs(s);
 
         }
     }
 
-    return;
+    return MPP_OK;
 }
