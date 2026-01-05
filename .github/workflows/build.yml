@@ -8,9 +8,10 @@ on:
 
 jobs:
 
-  build_and_release:
+  build-and-release:
     name: Build and Release Debian Package
-    runs-on: ubuntu-latest
+    # Run on arm64 hosted runner to avoid QEMU emulation slowness.
+    runs-on: ubuntu-22.04-arm
     strategy:
       matrix:
         image:
@@ -22,14 +23,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-        with:
-          platforms: linux/arm64
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      # The package is still built inside Ubuntu 20.04 container for glibc compatibility.
       - name: Cache Docker layers
         uses: docker/build-push-action@v3
         with:
