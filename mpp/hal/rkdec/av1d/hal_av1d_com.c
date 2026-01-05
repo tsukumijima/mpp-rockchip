@@ -1042,14 +1042,6 @@ static RK_S32 GetRelativeDist(DXVA_PicParams_AV1 *dxva, RK_S32 a, RK_S32 b)
     return diff;
 }
 
-static RK_U32 mpp_clip_uintp2(RK_S32 a, RK_S32 p)
-{
-    if (a & ~((1 << p) - 1))
-        return -a >> 31 & ((1 << p) - 1);
-    else
-        return a;
-}
-
 MPP_RET vdpu38x_av1d_uncomp_hdr(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
                                 RK_U64 *data, RK_U32 len)
 {
@@ -1108,8 +1100,8 @@ MPP_RET vdpu38x_av1d_uncomp_hdr(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
 
     /* frame uncompresss header */
     {
-        RK_U32 frame_is_intra = dxva->format.frame_type == KEY_FRAME ||
-                                dxva->format.frame_type == INTRA_ONLY_FRAME;
+        RK_U32 frame_is_intra = dxva->format.frame_type == AV1_KEY_FRAME ||
+                                dxva->format.frame_type == AV1_INTRA_ONLY_FRAME;
 
         mpp_put_bits(&bp, frame_is_intra, 1);
         mpp_put_bits(&bp, dxva->coding.disable_cdf_update, 1);
@@ -1129,7 +1121,7 @@ MPP_RET vdpu38x_av1d_uncomp_hdr(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
         mpp_put_bits(&bp, dxva->coding.intrabc, 1);
     }
 
-    for (i = 0; i < ALLOWED_REFS_PER_FRAME_EX; i++)
+    for (i = 0; i < AV1_REFS_PER_FRAME; i++)
         mpp_put_bits(&bp, dxva->ref_frame_valued ? dxva->ref_frame_idx[i] : (RK_U32) - 1, 3);
 
     mpp_put_bits(&bp, dxva->interp_filter, 3);
@@ -1139,16 +1131,16 @@ MPP_RET vdpu38x_av1d_uncomp_hdr(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
     {
         RK_U32 mapped_idx = 0;
 
-        for (i = 0; i < NUM_REF_FRAMES; i++) {
+        for (i = 0; i < AV1_NUM_REF_FRAMES; i++) {
             mpp_put_bits(&bp, dxva->frame_refs[i].order_hint, 8);
         }
-        for (i = 0; i < ALLOWED_REFS_PER_FRAME_EX; i++) {
+        for (i = 0; i < AV1_REFS_PER_FRAME; i++) {
             mapped_idx = dxva->ref_frame_idx[i];
             mpp_put_bits(&bp, dxva->ref_order_hint[mapped_idx], 8);
         }
     }
 
-    for (i = 0; i < ALLOWED_REFS_PER_FRAME_EX; ++i) {
+    for (i = 0; i < AV1_REFS_PER_FRAME; ++i) {
         if (!dxva->order_hint_bits) {
             dxva->ref_frame_sign_bias[i] = 0;
         } else {
@@ -1179,11 +1171,11 @@ MPP_RET vdpu38x_av1d_uncomp_hdr(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
     mpp_put_bits(&bp, dxva->segmentation.temporal_update, 1);
 
     {
-        RK_U32 mi_rows = MPP_ALIGN(dxva->width, 8) >> MI_SIZE_LOG2;
-        RK_U32 mi_cols = MPP_ALIGN(dxva->height, 8) >> MI_SIZE_LOG2;
+        RK_U32 mi_rows = MPP_ALIGN(dxva->width, 8) >> AV1_MI_SIZE_LOG2;
+        RK_U32 mi_cols = MPP_ALIGN(dxva->height, 8) >> AV1_MI_SIZE_LOG2;
         /* index 0: AV1_REF_FRAME_LAST - AV1_REF_FRAME_LAST */
-        RK_U32 prev_mi_rows = MPP_ALIGN(dxva->frame_refs[0].width, 8) >> MI_SIZE_LOG2;
-        RK_U32 prev_mi_cols = MPP_ALIGN(dxva->frame_refs[0].height, 8) >> MI_SIZE_LOG2;
+        RK_U32 prev_mi_rows = MPP_ALIGN(dxva->frame_refs[0].width, 8) >> AV1_MI_SIZE_LOG2;
+        RK_U32 prev_mi_cols = MPP_ALIGN(dxva->frame_refs[0].height, 8) >> AV1_MI_SIZE_LOG2;
         RK_U32 use_prev_segmentation_ids  = dxva->segmentation.enabled && dxva->primary_ref_frame &&
                                             (mi_rows == prev_mi_rows) &&
                                             (mi_cols == prev_mi_cols);
@@ -1192,10 +1184,10 @@ MPP_RET vdpu38x_av1d_uncomp_hdr(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
     }
 
     /* Segmentation data update */
-    for (i = 0; i < MAX_SEGMENTS; i++)
+    for (i = 0; i < AV1_MAX_SEGMENTS; i++)
         mpp_put_bits(&bp, dxva->segmentation.feature_mask[i], 8);
 
-    for (i = 0; i < MAX_SEGMENTS; i++) {
+    for (i = 0; i < AV1_MAX_SEGMENTS; i++) {
         mpp_put_bits(&bp, dxva->segmentation.feature_data[i][0], 9);
         mpp_put_bits(&bp, dxva->segmentation.feature_data[i][1], 7);
         mpp_put_bits(&bp, dxva->segmentation.feature_data[i][2], 7);
@@ -1216,15 +1208,15 @@ MPP_RET vdpu38x_av1d_uncomp_hdr(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
     mpp_put_bits(&bp, 1 << dxva->loop_filter.delta_lf_res, 2);
     mpp_put_bits(&bp, dxva->loop_filter.delta_lf_multi, 1);
     mpp_put_bits(&bp, dxva->coded_lossless, 1);
-    for (i = 0; i < MAX_SEGMENTS; ++i) {
+    for (i = 0; i < AV1_MAX_SEGMENTS; ++i) {
         RK_S32 qindex, lossless;
 
         if (dxva->segmentation.feature_mask[i] & 0x1) {
-            qindex = (dxva->quantization.base_qindex + dxva->segmentation.feature_data[i][SEG_LVL_ALT_Q]);
+            qindex = (dxva->quantization.base_qindex + dxva->segmentation.feature_data[i][AV1_SEG_LVL_ALT_Q]);
         } else {
             qindex = dxva->quantization.base_qindex;
         }
-        qindex = mpp_clip_uintp2(qindex, 8);
+        qindex = mpp_clip_uint_pow2(qindex, 8);
         lossless = qindex == 0 && dxva->quantization.y_dc_delta_q == 0 &&
                    dxva->quantization.u_dc_delta_q == 0 &&
                    dxva->quantization.v_dc_delta_q == 0 &&
@@ -1246,10 +1238,10 @@ MPP_RET vdpu38x_av1d_uncomp_hdr(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
     mpp_put_bits(&bp, dxva->loop_filter.sharpness_level, 3);
     mpp_put_bits(&bp, dxva->loop_filter.mode_ref_delta_enabled, 1);
 
-    for (i = 0; i < NUM_REF_FRAMES; i++)
+    for (i = 0; i < AV1_NUM_REF_FRAMES; i++)
         mpp_put_bits(&bp, dxva->loop_filter.ref_deltas[i], 7);
 
-    for (i = 0; i < MAX_MODE_LF_DELTAS; i++)
+    for (i = 0; i < AV1_MAX_MODE_LF_DELTAS; i++)
         mpp_put_bits(&bp, dxva->loop_filter.mode_deltas[i], 7);
 
     /* cdef params */
@@ -1289,10 +1281,10 @@ MPP_RET vdpu38x_av1d_uncomp_hdr(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
     mpp_put_bits(&bp, dxva->coding.reduced_tx_set, 1);
 
     /* gm_type and gm_params */
-    for (i = 0; i < ALLOWED_REFS_PER_FRAME_EX; ++i)
+    for (i = 0; i < AV1_REFS_PER_FRAME; ++i)
         mpp_put_bits(&bp, dxva->frame_refs[i].wmtype, 2);
 
-    for (i = 0; i < ALLOWED_REFS_PER_FRAME_EX; ++i)
+    for (i = 0; i < AV1_REFS_PER_FRAME; ++i)
         for (j = 0; j < 6; j++)
             mpp_put_bits(&bp, dxva->frame_refs[i].wmmat_val[j], 17);
 
@@ -1349,19 +1341,19 @@ MPP_RET vdpu38x_av1d_uncomp_hdr(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
     }
 
     /* ref frame info */
-    for (i = 0; i < NUM_REF_FRAMES; ++i)
+    for (i = 0; i < AV1_NUM_REF_FRAMES; ++i)
         mpp_put_bits(&bp, dxva->frame_ref_state[i].upscaled_width, 16);
 
-    for (i = 0; i < NUM_REF_FRAMES; ++i)
+    for (i = 0; i < AV1_NUM_REF_FRAMES; ++i)
         mpp_put_bits(&bp, dxva->frame_ref_state[i].frame_height, 16);
 
-    for (i = 0; i < NUM_REF_FRAMES; ++i)
+    for (i = 0; i < AV1_NUM_REF_FRAMES; ++i)
         mpp_put_bits(&bp, dxva->frame_ref_state[i].frame_width, 16);
 
-    for (i = 0; i < NUM_REF_FRAMES; ++i)
+    for (i = 0; i < AV1_NUM_REF_FRAMES; ++i)
         mpp_put_bits(&bp, dxva->frame_ref_state[i].frame_type, 2);
 
-    for (i = 0; i < NUM_REF_FRAMES; ++i) {
+    for (i = 0; i < AV1_NUM_REF_FRAMES; ++i) {
         mpp_put_bits(&bp, dxva->frame_refs[i].lst_frame_offset, 8);
         mpp_put_bits(&bp, dxva->frame_refs[i].lst2_frame_offset, 8);
         mpp_put_bits(&bp, dxva->frame_refs[i].lst3_frame_offset, 8);
@@ -1376,12 +1368,12 @@ MPP_RET vdpu38x_av1d_uncomp_hdr(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
         RK_U32 mapped_frame_width[8] = {0};
         RK_U32 mapped_frame_height[8] = {0};
 
-        for (i = 0; i < ALLOWED_REFS_PER_FRAME_EX; i++) {
+        for (i = 0; i < AV1_REFS_PER_FRAME; i++) {
             mapped_idx = dxva->ref_frame_idx[i];
             mapped_frame_width[mapped_idx] = dxva->frame_ref_state[mapped_idx].frame_width;
             mapped_frame_height[mapped_idx] = dxva->frame_ref_state[mapped_idx].frame_height;
         }
-        for (i = 0; i <= ALLOWED_REFS_PER_FRAME_EX; ++i) {
+        for (i = 0; i <= AV1_REFS_PER_FRAME; ++i) {
             RK_U32 hor_scale, ver_scale;
 
             if (dxva->coding.intrabc) {
@@ -1494,7 +1486,7 @@ void vdpu38x_av1d_set_cdf_segid(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
     }
 #endif
     if (dxva->format.frame_type == AV1_FRAME_KEY)
-        for (i = 0; i < NUM_REF_FRAMES; i++)
+        for (i = 0; i < AV1_NUM_REF_FRAMES; i++)
             reg_ctx->ref_info_tbl[i].cdf_valid = 0;
     /* def coeff cdf idx */
     coeff_cdf_idx = dxva->quantization.base_qindex <= 20 ? 0 :
@@ -1552,7 +1544,7 @@ void vdpu38x_av1d_set_cdf_segid(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva,
     mpp_dev_set_reg_offset(p_hal->dev, 182, ALL_CDF_SIZE);
 
     /* update params sync with "update buffer" */
-    for (i = 0; i < NUM_REF_FRAMES; i++) {
+    for (i = 0; i < AV1_NUM_REF_FRAMES; i++) {
         if (dxva->refresh_frame_flags & (1 << i)) {
             if (dxva->coding.disable_frame_end_update_cdf) {
                 if (dxva->show_existing_frame && dxva->format.frame_type == AV1_FRAME_KEY)
