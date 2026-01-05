@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef __H265E_SYNTAX_H__
-#define __H265E_SYNTAX_H__
+#ifndef H265E_SYNTAX_H
+#define H265E_SYNTAX_H
+
+#include "rk_type.h"
 
 typedef struct H265eSyntax_t {
     RK_S32          idr_request;

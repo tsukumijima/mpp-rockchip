@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_VP9D_DEBUG_H__
-#define __HAL_VP9D_DEBUG_H__
+#ifndef HAL_VP9D_DEBUG_H
+#define HAL_VP9D_DEBUG_H
 
 #include "mpp_debug.h"
 
@@ -23,8 +23,8 @@
 #define HAL_VP9D_DBG_PAR                (0x00000002)
 #define HAL_VP9D_DBG_REG                (0x00000004)
 
-#define hal_vp9d_dbg(flag, fmt, ...)    _mpp_dbg(hal_vp9d_debug, flag, fmt, ## __VA_ARGS__)
-#define hal_vp9d_dbg_f(flag, fmt, ...)  _mpp_dbg_f(hal_vp9d_debug, flag, fmt, ## __VA_ARGS__)
+#define hal_vp9d_dbg(flag, fmt, ...)    mpp_dbg(hal_vp9d_debug, flag, fmt, ## __VA_ARGS__)
+#define hal_vp9d_dbg_f(flag, fmt, ...)  mpp_dbg_f(hal_vp9d_debug, flag, fmt, ## __VA_ARGS__)
 
 #define hal_vp9d_dbg_func(fmt, ...)     hal_vp9d_dbg_f(HAL_VP9D_DBG_FUNC, fmt, ## __VA_ARGS__)
 #define hal_vp9d_dbg_par(fmt, ...)      hal_vp9d_dbg(HAL_VP9D_DBG_PAR, fmt, ## __VA_ARGS__)
@@ -35,4 +35,4 @@
 
 extern RK_U32 hal_vp9d_debug;
 
-#endif /* __HAL_VP9D_DEBUG_H__ */
+#endif /* HAL_VP9D_DEBUG_H */

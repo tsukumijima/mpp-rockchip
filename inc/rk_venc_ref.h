@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __RK_VENC_REF_H__
-#define __RK_VENC_REF_H__
+#ifndef RK_VENC_REF_H
+#define RK_VENC_REF_H
 
 #include "rk_type.h"
 #include "mpp_err.h"
@@ -154,8 +154,7 @@
 typedef enum MppEncRefMode_e {
     /* max 32 mode in 32-bit */
     /* for default ref global config */
-    REF_MODE_GLOBAL,
-    REF_TO_PREV_REF_FRM                 = REF_MODE_GLOBAL,
+    REF_TO_PREV_REF_FRM,
     REF_TO_PREV_ST_REF,
     REF_TO_PREV_LT_REF,
     REF_TO_PREV_INTRA,
@@ -263,4 +262,4 @@ MPP_RET mpp_enc_ref_cfg_show(MppEncRefCfg ref);
 }
 #endif
 
-#endif /*__RK_VENC_REF_H__*/
+#endif /* RK_VENC_REF_H */

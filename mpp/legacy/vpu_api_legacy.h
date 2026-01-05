@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __VPU_API_LEGACY_H__
-#define __VPU_API_LEGACY_H__
+#ifndef VPU_API_LEGACY_H
+#define VPU_API_LEGACY_H
 
 #include <stdio.h>
 
@@ -32,8 +32,8 @@
 #define VPU_API_DBG_OUTPUT              (0x00000020)
 #define VPU_API_DBG_CONTROL             (0x00000040)
 
-#define vpu_api_dbg(flag, fmt, ...)     _mpp_dbg(vpu_api_debug, flag, fmt, ## __VA_ARGS__)
-#define vpu_api_dbg_f(flag, fmt, ...)   _mpp_dbg_f(vpu_api_debug, flag, fmt, ## __VA_ARGS__)
+#define vpu_api_dbg(flag, fmt, ...)     mpp_dbg(vpu_api_debug, flag, fmt, ## __VA_ARGS__)
+#define vpu_api_dbg_f(flag, fmt, ...)   mpp_dbg_f(vpu_api_debug, flag, fmt, ## __VA_ARGS__)
 
 #define vpu_api_dbg_func(fmt, ...)      vpu_api_dbg_f(VPU_API_DBG_FUNCTION, fmt, ## __VA_ARGS__)
 #define vpu_api_dbg_input(fmt, ...)     vpu_api_dbg_f(VPU_API_DBG_INPUT, fmt, ## __VA_ARGS__)
@@ -103,4 +103,4 @@ private:
     RK_S32 dec_out_frm_struct_type;
 };
 
-#endif /*__VPU_API_LEGACY_H__*/
+#endif /* VPU_API_LEGACY_H */

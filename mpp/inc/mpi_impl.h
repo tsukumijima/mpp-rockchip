@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#ifndef __MPI_IMPL_H__
-#define __MPI_IMPL_H__
+#ifndef MPI_IMPL_H
+#define MPI_IMPL_H
 
 #include "mpp.h"
 
 #define MPI_DBG_FUNCTION            (0x00000001)
 
-#define mpi_dbg(flag, fmt, ...)     _mpp_dbg(mpi_debug, flag, fmt, ## __VA_ARGS__)
-#define mpi_dbg_f(flag, fmt, ...)   _mpp_dbg_f(mpi_debug, flag, fmt, ## __VA_ARGS__)
+#define mpi_dbg(flag, fmt, ...)     mpp_dbg(mpi_debug, flag, fmt, ## __VA_ARGS__)
+#define mpi_dbg_f(flag, fmt, ...)   mpp_dbg_f(mpi_debug, flag, fmt, ## __VA_ARGS__)
 
 #define mpi_dbg_func(fmt, ...)      mpi_dbg_f(MPI_DBG_FUNCTION, fmt, ## __VA_ARGS__)
 
@@ -39,4 +39,4 @@ struct MpiImpl_t {
 
 extern RK_U32 mpi_debug;
 
-#endif /*__MPI_IMPL_H__*/
+#endif /* MPI_IMPL_H */

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_AVS2D_RKV_H__
-#define __HAL_AVS2D_RKV_H__
+#ifndef HAL_AVS2D_RKV_H
+#define HAL_AVS2D_RKV_H
 
 #include "mpp_device.h"
 
@@ -23,7 +23,6 @@
 #include "hal_avs2d_api.h"
 #include "hal_avs2d_global.h"
 #include "avs2d_syntax.h"
-#include "vdpu34x.h"
 
 #define AVS2D_REGISTERS     (278)
 
@@ -37,4 +36,4 @@ extern const MppHalApi hal_avs2d_rkvdpu;
 }
 #endif
 
-#endif /*__HAL_AVS2D_RKV_H__*/
+#endif /* HAL_AVS2D_RKV_H */

@@ -14,16 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __HAL_JPEGD_VDPU1_H__
-#define __HAL_JPEGD_VDPU1_H__
+#ifndef HAL_JPEGD_VDPU1_H
+#define HAL_JPEGD_VDPU1_H
 
 #include "rk_type.h"
 
-MPP_RET hal_jpegd_vdpu1_init(void *hal, MppHalCfg *cfg);
-MPP_RET hal_jpegd_vdpu1_deinit(void *hal);
-MPP_RET hal_jpegd_vdpu1_gen_regs(void *hal,  HalTaskInfo *syn);
-MPP_RET hal_jpegd_vdpu1_start(void *hal, HalTaskInfo *task);
-MPP_RET hal_jpegd_vdpu1_wait(void *hal, HalTaskInfo *task);
-MPP_RET hal_jpegd_vdpu1_control(void *hal, MpiCmd cmd_type, void *param);
+extern const MppHalApi hal_jpegd_vdpu1;
 
-#endif /* __HAL_JPEGD_VDPU1_H__ */
+#endif /* HAL_JPEGD_VDPU1_H */

@@ -3,8 +3,8 @@
  * Copyright (c) 2015 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_BUFFER_IMPL_H__
-#define __MPP_BUFFER_IMPL_H__
+#ifndef MPP_BUFFER_IMPL_H
+#define MPP_BUFFER_IMPL_H
 
 #include "mpp_list.h"
 #include "mpp_hash.h"
@@ -19,8 +19,8 @@
 #define MPP_BUF_DBG_DUMP_ON_EXIT        (0x00000020)
 #define MPP_BUF_DBG_CHECK_SIZE          (0x00000100)
 
-#define mpp_buf_dbg(flag, fmt, ...)     _mpp_dbg(mpp_buffer_debug, flag, fmt, ## __VA_ARGS__)
-#define mpp_buf_dbg_f(flag, fmt, ...)   _mpp_dbg_f(mpp_buffer_debug, flag, fmt, ## __VA_ARGS__)
+#define mpp_buf_dbg(flag, fmt, ...)     mpp_dbg(mpp_buffer_debug, flag, fmt, ## __VA_ARGS__)
+#define mpp_buf_dbg_f(flag, fmt, ...)   mpp_dbg_f(mpp_buffer_debug, flag, fmt, ## __VA_ARGS__)
 
 #define MPP_BUF_FUNCTION_ENTER()        mpp_buf_dbg_f(MPP_BUF_DBG_FUNCTION, "enter\n")
 #define MPP_BUF_FUNCTION_LEAVE()        mpp_buf_dbg_f(MPP_BUF_DBG_FUNCTION, "leave\n")
@@ -33,8 +33,6 @@ typedef enum MppBufOps_e {
     GRP_RESET,
     GRP_ORPHAN,
     GRP_DESTROY,
-
-    GRP_OPS_BUTT    = GRP_DESTROY,
     BUF_COMMIT,
     BUF_CREATE,
     BUF_MMAP,
@@ -64,7 +62,7 @@ typedef struct MppBufLogs_t {
 
 typedef struct MppBufferImpl_t          MppBufferImpl;
 typedef struct MppBufferGroupImpl_t     MppBufferGroupImpl;
-typedef void (*MppBufCallback)(void *, void *);
+typedef void (*MppBufCallback)(void *arg1, void *arg2);
 
 // use index instead of pointer to avoid invalid pointer
 struct MppBufferImpl_t {
@@ -218,4 +216,4 @@ MppBufferGroupImpl *mpp_buffer_get_misc_group(MppBufferMode mode, MppBufferType 
 }
 #endif
 
-#endif /*__MPP_BUFFER_IMPL_H__*/
+#endif /* MPP_BUFFER_IMPL_H */

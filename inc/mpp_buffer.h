@@ -3,8 +3,8 @@
  * Copyright (c) 2015 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_BUFFER_H__
-#define __MPP_BUFFER_H__
+#ifndef MPP_BUFFER_H
+#define MPP_BUFFER_H
 
 #include "rk_type.h"
 #include "mpp_err.h"
@@ -344,11 +344,11 @@ MppBufferType mpp_buffer_group_type(MppBufferGroup group);
  */
 MPP_RET mpp_buffer_group_limit_config(MppBufferGroup group, size_t size, RK_S32 count);
 
-RK_U32 mpp_buffer_total_now();
-RK_U32 mpp_buffer_total_max();
+RK_U32 mpp_buffer_total_now(void);
+RK_U32 mpp_buffer_total_max(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /*__MPP_BUFFER_H__*/
+#endif /* MPP_BUFFER_H */

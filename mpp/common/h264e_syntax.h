@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __H264E_SYNTAX_H__
-#define __H264E_SYNTAX_H__
+#ifndef H264E_SYNTAX_H
+#define H264E_SYNTAX_H
 
 #include "mpp_rc_api.h"
 #include "h264_syntax.h"
@@ -54,9 +54,6 @@ typedef struct H264ePrefixNal_t {
     RK_S32      output_flag;
 } H264ePrefixNal;
 
-typedef struct H264eReorderInfo_t   H264eReorderInfo;
-typedef struct H264eMarkingInfo_t   H264eMarkingInfo;
-typedef struct H264eDpbFrm_t        H264eDpbFrm;
 
 /*
  * Split reference frame configure to two parts
@@ -82,4 +79,4 @@ typedef struct H264eFrmInfo_s {
         number++; \
     } while (0)
 
-#endif /* __H264E_SYNTAX_H__ */
+#endif /* H264E_SYNTAX_H */

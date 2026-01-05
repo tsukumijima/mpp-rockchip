@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef __H264D_GLOBAL_H__
-#define __H264D_GLOBAL_H__
+#ifndef H264D_GLOBAL_H
+#define H264D_GLOBAL_H
 
 #include <stdio.h>
 #include "h2645d_sei.h"
@@ -862,11 +862,11 @@ typedef struct h264_old_slice_par_t {
 #define SYNTAX_BUF_SIZE            (5)
 typedef struct h264d_dxva_ctx_t {
     RK_U8                            cfgBitstrmRaw;
-    struct _DXVA_PicParams_H264_MVC  pp;
-    struct _DXVA_Qmatrix_H264        qm;
+    struct DXVA_PicParams_H264_MVC_t pp;
+    struct DXVA_Qmatrix_H264_t       qm;
     RK_U32                           max_slice_size;
     RK_U32                           slice_count;
-    struct _DXVA_Slice_H264_Long     *slice_long;   //!<  MAX_SLICES
+    struct DXVA_Slice_H264_Long_t    *slice_long;   //!<  MAX_SLICES
     RK_U8                            *bitstream;
     RK_U32                           max_strm_size;
     RK_U32                           strm_offset;
@@ -1158,4 +1158,4 @@ typedef struct h264_dec_ctx_t {
     struct h264_err_ctx_t      errctx;
 } H264_DecCtx_t;
 
-#endif /* __H264D_GLOBAL_H__ */
+#endif /* H264D_GLOBAL_H */

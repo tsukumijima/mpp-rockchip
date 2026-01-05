@@ -5,12 +5,12 @@
 
 #include "kmpp_obj_macro.h"
 
-#ifdef __OBJECT_HERLPER_H__
+#ifdef OBJECT_HERLPER_H
 #error “MUST NOT include obj_helper.h within obj_helper.h“
 #endif
 
 /* define object helper for loop include detection */
-#define __OBJECT_HERLPER_H__
+#define OBJECT_HERLPER_H
 
 #if !defined(KMPP_OBJ_NAME) || \
     !defined(KMPP_OBJ_INTF_TYPE)
@@ -70,16 +70,10 @@
                 .tbl.elem_type = ELEM_TYPE_##ftype, \
                 .tbl.flag_offset = FLAG_TYPE_TO_OFFSET(name, flag, #flag), \
             }; \
-            MppCfgInfo info = { \
-                .data_type = CFG_FUNC_TYPE_##ftype, \
-                .flag_offset = tbl.tbl.flag_offset, \
-                .data_offset = tbl.tbl.elem_offset, \
-                .data_size = tbl.tbl.elem_size, \
-            }; \
             MppCfgObj CONCAT_US(obj, name) = NULL; \
             kmpp_objdef_add_entry(KMPP_OBJ_DEF(prefix), ENTRY_TO_NAME_START(name), &tbl); \
             mpp_cfg_get_object(&CONCAT_US(obj, name), TO_STR(name), MPP_CFG_TYPE_##ftype, NULL); \
-            mpp_cfg_set_info(CONCAT_US(obj, name), &info); \
+            mpp_cfg_set_entry(CONCAT_US(obj, name), &tbl); \
             mpp_cfg_add(__parent, CONCAT_US(obj, name)); \
             ENTRY_TO_NAME_END(name); \
     } while (0);
@@ -429,7 +423,7 @@ static void CONCAT_US(KMPP_OBJ_NAME, unregister)(void)
     KMPP_OBJ_DBG_LOG("unregister leave\n");
 }
 
-MPP_SINGLETON(KMPP_OBJ_SGLN_ID, KMPP_OBJ_NAME, CONCAT_US(KMPP_OBJ_NAME, register), CONCAT_US(KMPP_OBJ_NAME, unregister));
+MPP_SINGLETON(KMPP_OBJ_SGLN_ID, KMPP_OBJ_NAME, CONCAT_US(KMPP_OBJ_NAME, register), CONCAT_US(KMPP_OBJ_NAME, unregister))
 
 rk_s32 CONCAT_US(KMPP_OBJ_NAME, size)(void)
 {
@@ -643,6 +637,6 @@ extern "C" {
 #undef MPP_CFG_TYPE_ptr
 #undef MPP_CFG_TYPE_st
 
-#undef __OBJECT_HERLPER_H__
+#undef OBJECT_HERLPER_H
 
 #endif

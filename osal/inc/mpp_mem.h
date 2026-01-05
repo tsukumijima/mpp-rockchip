@@ -3,8 +3,8 @@
  * Copyright (c) 2015 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_MEM_H__
-#define __MPP_MEM_H__
+#ifndef MPP_MEM_H
+#define MPP_MEM_H
 
 #include <stdlib.h>
 
@@ -47,13 +47,13 @@ void *mpp_osal_calloc(const char *caller, size_t size);
 void *mpp_osal_realloc(const char *caller, void *ptr, size_t size);
 void mpp_osal_free(const char *caller, void *ptr);
 
-void mpp_show_mem_status();
-rk_u32 mpp_mem_total_now();
-rk_u32 mpp_mem_total_max();
+void mpp_show_mem_status(void);
+rk_u32 mpp_mem_total_now(void);
+rk_u32 mpp_mem_total_max(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /*__MPP_MEM_H__*/
+#endif /* MPP_MEM_H */
 

@@ -1,32 +1,24 @@
 /*
+ * Copyright (C) 2015 The FFmpeg project
+ * Copyright (c) 2015 Rockchip Electronics Co., Ltd.
  *
- * Copyright 2015 Rockchip Electronics Co. LTD
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-/*
- * @file       h265d_codec.h
- * @brief
- * @author      csy(csy@rock-chips.com)
-
- * @version     1.0.0
- * @history
- *   2015.7.15 : Create
- */
-
-#ifndef __H265D_CODEC_H__
-#define __H265D_CODEC_H__
+#ifndef H265D_CODEC_H
+#define H265D_CODEC_H
 
 #include "mpp_frame.h"
 #include "mpp_soc.h"
@@ -154,4 +146,4 @@ RK_S32 h265d_syntax_fill_slice(void *ctx, RK_S32 input_index);
 }
 #endif
 
-#endif /* __H265D_CODEC_H__ */
+#endif /* H265D_CODEC_H */

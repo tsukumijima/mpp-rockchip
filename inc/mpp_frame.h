@@ -3,8 +3,8 @@
  * Copyright (c) 2015 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_FRAME_H__
-#define __MPP_FRAME_H__
+#ifndef MPP_FRAME_H
+#define MPP_FRAME_H
 
 #include "mpp_buffer.h"
 #include "mpp_meta.h"
@@ -236,6 +236,7 @@ typedef enum {
  * For MPP_FRAME_FBC_AFBC_V1 the 16byte aligned stride is used.
  */
 #define MPP_FRAME_FMT_IS_FBC(fmt)   (fmt & MPP_FRAME_FBC_MASK)
+#define MPP_FRAME_FMT_IS_AFBC(fmt)  (fmt & (MPP_FRAME_FBC_AFBC_V1 | MPP_FRAME_FBC_AFBC_V2))
 #define MPP_FRAME_FMT_IS_RKFBC(fmt) (fmt & MPP_FRAME_FBC_RKFBC)
 
 #define MPP_FRAME_FMT_IS_HDR(fmt)   (fmt & MPP_FRAME_HDR_MASK)
@@ -317,7 +318,7 @@ typedef struct MppFrameContentLightMetadata {
 typedef struct MppFrameHdrDynamicMeta {
     RK_U32 hdr_fmt;
     RK_U32 size;
-    RK_U8 data[];
+    RK_U8 data[0];
 } MppFrameHdrDynamicMeta;
 
 typedef enum MppFrameError {
@@ -476,4 +477,4 @@ void    mpp_frame_set_hdr_dynamic_meta(MppFrame frame, MppFrameHdrDynamicMeta *v
 }
 #endif
 
-#endif /*__MPP_FRAME_H__*/
+#endif /* MPP_FRAME_H */

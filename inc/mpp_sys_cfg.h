@@ -3,30 +3,30 @@
  * Copyright (c) 2024 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_SYS_CFG_H__
-#define __MPP_SYS_CFG_H__
+#ifndef MPP_SYS_CFG_H
+#define MPP_SYS_CFG_H
 
 #include "mpp_frame.h"
 #include "mpp_list.h"
 
 typedef enum MppSysDecBufCkhCfgChange_e {
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_ENABLE           = (1 << 0),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_TYPE             = (1 << 1),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_FMT_CODEC        = (1 << 2),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_FMT_FBC          = (1 << 3),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_FMT_HDR          = (1 << 4),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_WIDTH            = (1 << 5),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_HEIGHT           = (1 << 6),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_CROP_TOP         = (1 << 7),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_CROP_BOTTOM      = (1 << 8),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_CROP_LEFT        = (1 << 9),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_CROP_RIGHT       = (1 << 10),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_FLAG_METADATA    = (1 << 11),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_FLAG_THUMBNAIL   = (1 << 12),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_H_STRIDE_BYTE    = (1 << 13),
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_V_STRIDE         = (1 << 14),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_ENABLE           = MPP_BIT(0),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_TYPE             = MPP_BIT(1),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_FMT_CODEC        = MPP_BIT(2),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_FMT_FBC          = MPP_BIT(3),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_FMT_HDR          = MPP_BIT(4),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_WIDTH            = MPP_BIT(5),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_HEIGHT           = MPP_BIT(6),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_CROP_TOP         = MPP_BIT(7),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_CROP_BOTTOM      = MPP_BIT(8),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_CROP_LEFT        = MPP_BIT(9),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_CROP_RIGHT       = MPP_BIT(10),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_FLAG_METADATA    = MPP_BIT(11),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_FLAG_THUMBNAIL   = MPP_BIT(12),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_H_STRIDE_BYTE    = MPP_BIT(13),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_V_STRIDE         = MPP_BIT(14),
 
-    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_ALL              = (0xFFFFFFFF),
+    MPP_SYS_DEC_BUF_CHK_CFG_CHANGE_ALL              = (0xFFFFFFFFU),
 } MppSysDecBufCkhChange;
 
 typedef struct MppSysBaseCfg_t {
@@ -95,4 +95,4 @@ MPP_RET mpp_sys_dec_buf_chk_proc(MppSysDecBufChkCfg *cfg);
 }
 #endif
 
-#endif /* __MPP_SYS_CFG_H__ */
+#endif /* MPP_SYS_CFG_H */

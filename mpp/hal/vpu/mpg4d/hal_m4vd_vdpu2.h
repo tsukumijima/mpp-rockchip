@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_M4VD_VDPU2_REG_H__
-#define __HAL_M4VD_VDPU2_REG_H__
+#ifndef HAL_M4VD_VDPU2_REG_H
+#define HAL_M4VD_VDPU2_REG_H
 
 #include "mpp_hal.h"
 
@@ -23,14 +23,10 @@
 extern "C" {
 #endif
 
-MPP_RET vdpu2_mpg4d_init    (void *hal, MppHalCfg *cfg);
-MPP_RET vdpu2_mpg4d_deinit  (void *hal);
-MPP_RET vdpu2_mpg4d_gen_regs(void *hal, HalTaskInfo *task);
-MPP_RET vdpu2_mpg4d_start   (void *hal, HalTaskInfo *task);
-MPP_RET vdpu2_mpg4d_wait    (void *hal, HalTaskInfo *task);
+extern const MppHalApi vdpu2_mpg4d;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /*__HAL_M4VD_VDPU2_REG_H__*/
+#endif /* HAL_M4VD_VDPU2_REG_H */

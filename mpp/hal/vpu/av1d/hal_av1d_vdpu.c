@@ -30,11 +30,11 @@
 #include "mpp_device.h"
 #include "hal_bufs.h"
 
+#include "hal_av1d_vdpu.h"
 #include "hal_av1d_vdpu_reg.h"
 #include "hal_av1d_common.h"
 #include "av1d_syntax.h"
 #include "film_grain_noise_table.h"
-#include "av1d_common.h"
 
 #define VDPU_FAST_REG_SET_CNT    3
 #define AV1_MAX_TILES 128
@@ -92,7 +92,7 @@ typedef struct VdpuAv1dRegCtx_t {
     RK_U32          luma_size ;
     RK_U32          chroma_size;
 
-    FilmGrainMemory fgsmem;
+    AV1FilmGrainMemory fgsmem;
 
     RK_S8           prev_out_buffer_i;
     RK_U8           fbc_en;
@@ -107,26 +107,6 @@ typedef struct VdpuAv1dRegCtx_t {
 
     RK_U32          num_tile_cols;
 } VdpuAv1dRegCtx;
-
-static RK_U32 rkv_ver_align(RK_U32 val)
-{
-    return MPP_ALIGN(val, 8);
-}
-
-static RK_U32 rkv_hor_align(RK_U32 val)
-{
-    return MPP_ALIGN(val, 16);
-}
-
-static RK_U32 rkv_len_align(RK_U32 val)
-{
-    return (2 * MPP_ALIGN(val, 128));
-}
-
-static RK_U32 rkv_len_align_422(RK_U32 val)
-{
-    return ((5 * MPP_ALIGN(val, 64)) / 2);
-}
 
 static MPP_RET hal_av1d_alloc_res(void *hal)
 {
@@ -274,9 +254,9 @@ MPP_RET vdpu_av1d_init(void *hal, MppHalCfg *cfg)
         reg_ctx->tile_transpose = 1;
     }
 
-    mpp_slots_set_prop(p_hal->slots, SLOTS_HOR_ALIGN, rkv_hor_align);
-    mpp_slots_set_prop(p_hal->slots, SLOTS_VER_ALIGN, rkv_ver_align);
-    mpp_slots_set_prop(p_hal->slots, SLOTS_LEN_ALIGN, rkv_len_align);
+    mpp_slots_set_prop(p_hal->slots, SLOTS_HOR_ALIGN, mpp_align_16);
+    mpp_slots_set_prop(p_hal->slots, SLOTS_VER_ALIGN, mpp_align_8);
+    mpp_slots_set_prop(p_hal->slots, SLOTS_LEN_ALIGN, mpp_align_wxh2yuv422);
 
     (void)cfg;
 __RETURN:
@@ -287,7 +267,7 @@ __FAILED:
     return ret;
 }
 
-static void set_ref_width(VdpuAv1dRegSet *regs, RK_S32 i, RK_S32 val)
+static void set_ref_width(VdpuAv1dRegSet *regs, RK_U32 i, RK_U32 val)
 {
     if (i == 0) {
         regs->swreg33.sw_ref0_width = val;
@@ -308,7 +288,7 @@ static void set_ref_width(VdpuAv1dRegSet *regs, RK_S32 i, RK_S32 val)
     }
 }
 
-static void set_ref_height(VdpuAv1dRegSet *regs, RK_S32 i, RK_S32 val)
+static void set_ref_height(VdpuAv1dRegSet *regs, RK_U32 i, RK_U32 val)
 {
     if (i == 0) {
         regs->swreg33.sw_ref0_height = val;
@@ -329,7 +309,7 @@ static void set_ref_height(VdpuAv1dRegSet *regs, RK_S32 i, RK_S32 val)
     }
 }
 
-static void set_ref_hor_scale(VdpuAv1dRegSet *regs, RK_S32 i, RK_S32 val)
+static void set_ref_hor_scale(VdpuAv1dRegSet *regs, RK_U32 i, RK_U32 val)
 {
     if (i == 0) {
         regs->swreg36.sw_ref0_hor_scale = val;
@@ -350,7 +330,7 @@ static void set_ref_hor_scale(VdpuAv1dRegSet *regs, RK_S32 i, RK_S32 val)
     }
 }
 
-static void set_ref_ver_scale(VdpuAv1dRegSet *regs, RK_S32 i, RK_S32 val)
+static void set_ref_ver_scale(VdpuAv1dRegSet *regs, RK_U32 i, RK_U32 val)
 {
     if (i == 0) {
         regs->swreg36.sw_ref0_ver_scale = val;
@@ -673,7 +653,6 @@ static void set_ref_sign_bias(VdpuAv1dRegSet *regs, RK_S32 i, RK_S32 val)
 }
 
 #define MAX_FRAME_DISTANCE 31
-#define MAX_ACTIVE_REFS AV1_ACTIVE_REFS_EX
 
 static RK_S32 GetRelativeDist(DXVA_PicParams_AV1 *dxva, RK_S32 a, RK_S32 b)
 {
@@ -760,7 +739,7 @@ static void vdpu_av1d_set_prob(Av1dHalCtx *p_hal, DXVA_PicParams_AV1 *dxva)
 {
     VdpuAv1dRegCtx *reg_ctx = (VdpuAv1dRegCtx *)p_hal->reg_ctx;
     const int mv_cdf_offset = offsetof(AV1CDFs, mv_cdf);
-    void* prob_base = mpp_buffer_get_ptr(reg_ctx->prob_tbl_base);
+    RK_U8* prob_base = mpp_buffer_get_ptr(reg_ctx->prob_tbl_base);
     VdpuAv1dRegSet *regs = reg_ctx->regs;
 
     memcpy(prob_base, dxva->cdfs, sizeof(AV1CDFs));
@@ -1806,7 +1785,7 @@ static void vdpu_av1d_set_fgs(VdpuAv1dRegCtx *ctx, DXVA_PicParams_AV1 *dxva)
         }
     }
 
-    memcpy(ptr, &ctx->fgsmem, sizeof(FilmGrainMemory));
+    memcpy(ptr, &ctx->fgsmem, sizeof(AV1FilmGrainMemory));
     mpp_buffer_sync_end(ctx->film_grain_mem);
 
     regs->addr_cfg.swreg94.sw_filmgrain_base_msb = 0;
@@ -2398,7 +2377,7 @@ MPP_RET vdpu_av1d_control(void *hal, MpiCmd cmd_type, void *param)
 
         AV1D_DBG(AV1D_DBG_LOG, "control info: fmt %d, w %d, h %d\n", fmt, imgwidth, imgheight);
         if ((fmt & MPP_FRAME_FMT_MASK) == MPP_FMT_YUV422SP) {
-            mpp_slots_set_prop(p_hal->slots, SLOTS_LEN_ALIGN, rkv_len_align_422);
+            mpp_slots_set_prop(p_hal->slots, SLOTS_LEN_ALIGN, mpp_align_wxh2yuv422);
         }
         break;
     }

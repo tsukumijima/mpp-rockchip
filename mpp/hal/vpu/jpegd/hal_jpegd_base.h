@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_JPEGD_BASE_H__
-#define __HAL_JPEGD_BASE_H__
+#ifndef HAL_JPEGD_BASE_H
+#define HAL_JPEGD_BASE_H
 
 #include <stdio.h>
 
@@ -41,7 +41,7 @@ typedef struct JpegdHalCtx {
     void                   *regs;
     MppBufferGroup         group;
     MppBuffer              pTableBase;
-    MppHalApi              hal_api;
+    const MppHalApi        *hal_api;
     MppCbCtx               *dec_cb;
 
     MppFrameFormat         output_fmt;
@@ -59,4 +59,4 @@ typedef struct JpegdHalCtx {
     const MppDecHwCap       *hw_info;
 } JpegdHalCtx;
 
-#endif /* __HAL_JPEGD_COMMON_H__ */
+#endif /* HAL_JPEGD_COMMON_H */

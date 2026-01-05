@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_M2VD_API_H__
-#define __HAL_M2VD_API_H__
+#ifndef HAL_M2VD_API_H
+#define HAL_M2VD_API_H
 
 #include "mpp_hal.h"
 
@@ -25,17 +25,8 @@ extern "C" {
 
 extern const MppHalApi hal_api_m2vd;
 
-MPP_RET hal_m2vd_init (void *hal, MppHalCfg *cfg);
-MPP_RET hal_m2vd_deinit (void *hal);
-MPP_RET hal_m2vd_gen_regs (void *hal, HalTaskInfo *task);
-MPP_RET hal_m2vd_start (void *hal, HalTaskInfo *task);
-MPP_RET hal_m2vd_wait (void *hal, HalTaskInfo *task);
-MPP_RET hal_m2vd_reset (void *hal);
-MPP_RET hal_m2vd_flush (void *hal);
-MPP_RET hal_m2vd_control (void *hal, MpiCmd cmd_type, void *param);
-
 #ifdef __cplusplus
 }
 #endif
 
-#endif /*__HAL_M2VD_API_H__*/
+#endif /* HAL_M2VD_API_H */

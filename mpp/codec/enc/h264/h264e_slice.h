@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __H264E_SLICE_H__
-#define __H264E_SLICE_H__
+#ifndef H264E_SLICE_H
+#define H264E_SLICE_H
 
 #include "mpp_enc_cfg.h"
 
@@ -162,6 +162,9 @@ MPP_RET h264e_marking_rd_op(H264eMarkingInfo *info, H264eMmco *op);
  */
 void h264e_slice_init(H264eSlice *slice, H264eReorderInfo *reorder,
                       H264eMarkingInfo *marking);
+
+typedef struct H264eDpbFrm_t        H264eDpbFrm;
+
 RK_S32 h264e_slice_update(H264eSlice *slice, MppEncCfgSet *cfg,
                           H264eSps *sps, H264ePps *pps,
                           H264eDpbFrm *frm);
@@ -178,4 +181,4 @@ RK_S32 h264e_slice_write_prefix_nal_unit_svc(H264ePrefixNal *nal, void *p, RK_S3
 }
 #endif
 
-#endif /* __H264E_SLICE_H__ */
+#endif /* H264E_SLICE_H */

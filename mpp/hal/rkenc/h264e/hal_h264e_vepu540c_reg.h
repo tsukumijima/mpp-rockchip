@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_H264E_VEPU540C_REG_H__
-#define __HAL_H264E_VEPU540C_REG_H__
+#ifndef HAL_H264E_VEPU540C_REG_H
+#define HAL_H264E_VEPU540C_REG_H
 
 #include "rk_type.h"
 #include "vepu540c_common.h"
@@ -946,9 +946,6 @@ typedef struct Vepu540cSection3_t {
         RK_U32    atr1_thd2 : 12;
         RK_U32    reserve1 : 20;
     } ATR_THD11; //       only 264
-
-    // /* 0x1748 - 0x174c */
-    // RK_U32 reserved1490_1491[2];
 
     /* 0x00001750 reg1492 */
     struct {

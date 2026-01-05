@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 
-#ifndef __VP8D_SYNTAX_H__
-#define __VP8D_SYNTAX_H__
+#ifndef VP8D_SYNTAX_H
+#define VP8D_SYNTAX_H
 
 #include "rk_type.h"
 
-typedef struct _DXVA_PicEntry_VP8 {
+typedef struct DXVA_PicEntry_VP8_t {
     union {
         struct {
             RK_U8 Index7Bits     : 7;
@@ -29,7 +29,7 @@ typedef struct _DXVA_PicEntry_VP8 {
         RK_U8 bPicEntry;
     };
 } DXVA_PicEntry_VP8;
-typedef struct _segmentation_Vp8 {
+typedef struct DXVA_segmentation_Vp8_t {
     union {
         struct {
             RK_U8 segmentation_enabled         : 1;

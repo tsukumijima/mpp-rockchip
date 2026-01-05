@@ -3,8 +3,8 @@
  * Copyright (c) 2024 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_TRIE_H__
-#define __MPP_TRIE_H__
+#ifndef MPP_TRIE_H
+#define MPP_TRIE_H
 
 #include <string.h>
 
@@ -67,12 +67,12 @@ static inline void *mpp_trie_info_ctx(MppTrieInfo *info)
 
 static inline rk_s32 mpp_trie_info_is_self(MppTrieInfo *info)
 {
-    return (info) ? !!strstr((const char *)(info + 1), "__") : 0;
+    return (info) ? (strstr((const char *)(info + 1), "__") != NULL ? 1 : 0) : 0;
 }
 
 static inline rk_s32 mpp_trie_info_name_is_self(const char *name)
 {
-    return (name) ? !!strstr(name, "__") : 0;
+    return (name) ? (strstr(name, "__") != NULL ? 1 : 0) : 0;
 }
 
 /* trie lookup function */
@@ -91,4 +91,4 @@ void mpp_trie_timing_test(MppTrie trie);
 }
 #endif
 
-#endif /*__MPP_TRIE_H__*/
+#endif /* MPP_TRIE_H */

@@ -3,8 +3,8 @@
  * Copyright (c) 2015 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __RK_VENC_CMD_H__
-#define __RK_VENC_CMD_H__
+#ifndef RK_VENC_CMD_H
+#define RK_VENC_CMD_H
 
 #include "mpp_frame.h"
 #include "rk_venc_rc.h"
@@ -968,10 +968,10 @@ typedef struct MppEncVp8Cfg_t {
 
 typedef enum MppEncSliceSplit_e {
     /* change on quant parameter */
-    MPP_ENC_SPLIT_CFG_CHANGE_MODE           = (1 << 0),
-    MPP_ENC_SPLIT_CFG_CHANGE_ARG            = (1 << 1),
-    MPP_ENC_SPLIT_CFG_CHANGE_OUTPUT         = (1 << 2),
-    MPP_ENC_SPLIT_CFG_CHANGE_ALL            = (0xFFFFFFFF),
+    MPP_ENC_SPLIT_CFG_CHANGE_MODE           = MPP_BIT(0),
+    MPP_ENC_SPLIT_CFG_CHANGE_ARG            = MPP_BIT(1),
+    MPP_ENC_SPLIT_CFG_CHANGE_OUTPUT         = MPP_BIT(2),
+    MPP_ENC_SPLIT_CFG_CHANGE_ALL            = (0xFFFFFFFFU),
 } MppEncSliceSplitChange;
 
 typedef enum MppEncSplitMode_e {
@@ -982,8 +982,8 @@ typedef enum MppEncSplitMode_e {
 } MppEncSplitMode;
 
 typedef enum MppEncSplitOutMode_e {
-    MPP_ENC_SPLIT_OUT_LOWDELAY              = (1 << 0),
-    MPP_ENC_SPLIT_OUT_SEGMENT               = (1 << 1),
+    MPP_ENC_SPLIT_OUT_LOWDELAY              = MPP_BIT(0),
+    MPP_ENC_SPLIT_OUT_SEGMENT               = MPP_BIT(1),
 } MppEncSplitOutMode;
 
 typedef struct MppEncSliceSplit_t {
@@ -1135,9 +1135,9 @@ typedef struct MppEncOSDPlt_t {
 } MppEncOSDPlt;
 
 typedef enum MppEncOSDPltCfgChange_e {
-    MPP_ENC_OSD_PLT_CFG_CHANGE_MODE     = (1 << 0),     /* change osd plt type */
-    MPP_ENC_OSD_PLT_CFG_CHANGE_PLT_VAL  = (1 << 1),     /* change osd plt table value */
-    MPP_ENC_OSD_PLT_CFG_CHANGE_ALL      = (0xFFFFFFFF),
+    MPP_ENC_OSD_PLT_CFG_CHANGE_MODE     = MPP_BIT(0),     /* change osd plt type */
+    MPP_ENC_OSD_PLT_CFG_CHANGE_PLT_VAL  = MPP_BIT(1),     /* change osd plt table value */
+    MPP_ENC_OSD_PLT_CFG_CHANGE_ALL      = (0xFFFFFFFFU),
 } MppEncOSDPltCfgChange;
 
 typedef struct MppEncOSDPltCfg_t {
@@ -1306,4 +1306,4 @@ typedef struct MppEncFineTuneCfg_t {
     RK_S32              fg_area; /* foreground area, [-1, 100] */
 } MppEncFineTuneCfg;
 
-#endif /*__RK_VENC_CMD_H__*/
+#endif /* RK_VENC_CMD_H */

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_VP8D_BASE_H__
-#define __HAL_VP8D_BASE_H__
+#ifndef HAL_VP8D_BASE_H
+#define HAL_VP8D_BASE_H
 
 #include <stdio.h>
 
@@ -35,7 +35,7 @@
 extern RK_U32 hal_vp8d_debug;
 
 #define vp8h_dbg(flag, fmt, ...) \
-     _mpp_dbg_f(hal_vp8d_debug, flag, fmt, ## __VA_ARGS__)
+     mpp_dbg_f(hal_vp8d_debug, flag, fmt, ## __VA_ARGS__)
 
 #define FUN_T(tag) \
     do {\
@@ -55,7 +55,7 @@ typedef struct VP8DHalContext {
     RK_U32          dec_frame_cnt;
     FILE            *fp_reg_in;
     FILE            *fp_reg_out;
-    MppHalApi       hal_api;
+    const MppHalApi *hal_api;
 } VP8DHalContext_t;
 
 #endif

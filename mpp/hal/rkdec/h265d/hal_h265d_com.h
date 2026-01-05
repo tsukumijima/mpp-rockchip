@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_H265D_COM_H__
-#define __HAL_H265D_COM_H__
+#ifndef HAL_H265D_COM_H
+#define HAL_H265D_COM_H
 
 #include "rk_type.h"
 #include <limits.h>
@@ -146,15 +146,21 @@ extern RK_U8 cabac_table[27456];
 extern "C" {
 #endif
 
-RK_U32 hevc_ver_align(RK_U32 val);
-RK_U32 hevc_hor_align(RK_U32 val);
 void hal_record_scaling_list(scalingFactor_t *pScalingFactor_out, scalingList_t *pScalingList);
 RK_S32 hal_h265d_slice_hw_rps(void *dxva, void *rps_buf, void* sw_rps_buf, RK_U32 fast_mode);
 RK_S32 hal_h265d_slice_output_rps(void *dxva, void *rps_buf);
 void hal_h265d_output_scalinglist_packet(void *hal, void *ptr, void *dxva);
+void hal_vdpu38x_record_scaling_list(scalingFactor_t *pScalingFactor_out, scalingList_t *pScalingList);
+MPP_RET hal_h265d_vdpu38x_scalinglist_packet(void *hal, void *ptr, void *dxva);
+RK_S32 hal_h265d_vdpu38x_output_pps_packet(void *hal, void *dxva, RK_U32 *scanlist_addr);
+
+MPP_RET hal_h265d_vdpu38x_deinit(void *hal);
+MPP_RET hal_h265d_vdpu_reset(void *hal);
+MPP_RET hal_h265d_vdpu_flush(void *hal);
+MPP_RET hal_h265d_vdpu38x_control(void *hal, MpiCmd cmd_type, void *param);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /*__HAL_H265D_COM_H__*/
+#endif /* HAL_H265D_COM_H */

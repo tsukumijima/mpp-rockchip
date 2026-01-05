@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __JPEGE_DEBUG_H__
-#define __JPEGE_DEBUG_H__
+#ifndef JPEGE_DEBUG_H
+#define JPEGE_DEBUG_H
 
 #include "mpp_debug.h"
 
@@ -24,8 +24,8 @@
 #define JPEGE_DBG_OUTPUT            (0x00000020)
 #define JPEGE_DBG_CTRL              (0x00000040)
 
-#define jpege_dbg(flag, fmt, ...)   _mpp_dbg(jpege_debug, flag, fmt, ## __VA_ARGS__)
-#define jpege_dbg_f(flag, fmt, ...) _mpp_dbg_f(jpege_debug, flag, fmt, ## __VA_ARGS__)
+#define jpege_dbg(flag, fmt, ...)   mpp_dbg(jpege_debug, flag, fmt, ## __VA_ARGS__)
+#define jpege_dbg_f(flag, fmt, ...) mpp_dbg_f(jpege_debug, flag, fmt, ## __VA_ARGS__)
 
 #define jpege_dbg_func(fmt, ...)    jpege_dbg_f(JPEGE_DBG_FUNCTION, fmt, ## __VA_ARGS__)
 #define jpege_dbg_input(fmt, ...)   jpege_dbg(JPEGE_DBG_INPUT, fmt, ## __VA_ARGS__)
@@ -34,4 +34,4 @@
 
 extern RK_U32 jpege_debug;
 
-#endif /* __JPEGE_DEBUG_H__ */
+#endif /* JPEGE_DEBUG_H */

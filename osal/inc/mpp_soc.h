@@ -3,8 +3,8 @@
  * Copyright (c) 2020 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_SOC_H__
-#define __MPP_SOC_H__
+#ifndef MPP_SOC_H
+#define MPP_SOC_H
 
 #include "mpp_dev_defs.h"
 
@@ -37,6 +37,8 @@ typedef enum RockchipSocType_e {
     ROCKCHIP_SOC_RK3562,
     ROCKCHIP_SOC_RK3576,
     ROCKCHIP_SOC_RV1126B,
+    ROCKCHIP_SOC_RK3538,
+    ROCKCHIP_SOC_RK3572,
     ROCKCHIP_SOC_BUTT,
 } RockchipSocType;
 
@@ -88,6 +90,8 @@ typedef struct {
 extern "C" {
 #endif
 
+RK_S32 mpp_coding_to_index(MppCodingType coding);
+
 const char *mpp_get_soc_name(void);
 RockchipSocType mpp_get_soc_type(void);
 
@@ -99,4 +103,4 @@ const MppDecHwCap* mpp_get_dec_hw_info_by_client_type(MppClientType client_type)
 }
 #endif
 
-#endif /*__MPP_SOC_H__*/
+#endif /* MPP_SOC_H */

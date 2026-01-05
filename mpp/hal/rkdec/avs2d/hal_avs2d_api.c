@@ -29,10 +29,12 @@
 #include "mpp_env.h"
 #include "mpp_common.h"
 
+#include "hal_hw_id.h"
 #include "hal_avs2d_api.h"
 #include "hal_avs2d_rkv.h"
 #include "hal_avs2d_vdpu382.h"
 #include "hal_avs2d_vdpu383.h"
+#include "hal_avs2d_vdpu384b.h"
 
 RK_U32 avs2d_hal_debug = 0;
 
@@ -89,6 +91,10 @@ MPP_RET hal_avs2d_init(void *hal, MppHalCfg *cfg)
     switch (hw_id) {
     case HWID_VDPU383 : {
         api = &hal_avs2d_vdpu383;
+    } break;
+    case HWID_VDPU384B_RK3538 :
+    case HWID_VDPU384B_RK3572 : {
+        api = &hal_avs2d_vdpu384b;
     } break;
     case HWID_VDPU382_RK3528 : {
         api = &hal_avs2d_vdpu382;

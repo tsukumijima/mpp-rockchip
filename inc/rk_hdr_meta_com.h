@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __RK_HDR_META_COM_H__
-#define __RK_HDR_META_COM_H__
+#ifndef RK_HDR_META_COM_H
+#define RK_HDR_META_COM_H
 
 #include "rk_type.h"
 
@@ -110,7 +110,7 @@ typedef struct RkMetaHdrHeader_t {
     RK_U32  reserve[4];
 
     /* payload data aligned to 32bits */
-    RK_U32  payload[];
+    RK_U32  payload[0];
 } RkMetaHdrHeader;
 
 #ifdef __cplusplus

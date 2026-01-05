@@ -3,8 +3,8 @@
  * Copyright (c) 2020 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_DEVICE_H__
-#define __MPP_DEVICE_H__
+#ifndef MPP_DEVICE_H
+#define MPP_DEVICE_H
 
 #include "mpp_err.h"
 #include "mpp_list.h"
@@ -67,7 +67,7 @@ typedef struct MppDevRegOffsetCfg_t {
 typedef struct MppDevRegOffsCfg_t {
     RK_S32  size;
     RK_S32  count;
-    MppDevRegOffsetCfg cfgs[];
+    MppDevRegOffsetCfg cfgs[0];
 } MppDevRegOffCfgs;
 
 /* for MPP_DEV_RCB_INFO */
@@ -97,7 +97,7 @@ typedef struct MppDevPollCfg_t {
     RK_S32  poll_ret;
     RK_S32  count_max;
     RK_S32  count_ret;
-    MppDevPollEncSliceInfo slice_info[];
+    MppDevPollEncSliceInfo slice_info[0];
 } MppDevPollCfg;
 
 typedef struct MppDevBufMapNode_t {
@@ -173,4 +173,4 @@ MPP_RET mpp_dev_multi_offset_update(MppDevRegOffCfgs *cfgs, RK_S32 index, RK_U32
 }
 #endif
 
-#endif /* __MPP_DEVICE_H__ */
+#endif /* MPP_DEVICE_H */

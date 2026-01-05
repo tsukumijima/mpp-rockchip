@@ -14,15 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_VP8D_VDPU2_H__
-#define __HAL_VP8D_VDPU2_H__
+#ifndef HAL_VP8D_VDPU2_H
+#define HAL_VP8D_VDPU2_H
 
 #include "hal_vp8d_base.h"
 
-MPP_RET hal_vp8d_vdpu2_init    (void *hal, MppHalCfg *cfg);
-MPP_RET hal_vp8d_vdpu2_deinit  (void *hal);
-MPP_RET hal_vp8d_vdpu2_gen_regs(void *hal, HalTaskInfo *task);
-MPP_RET hal_vp8d_vdpu2_start   (void *hal, HalTaskInfo *task);
-MPP_RET hal_vp8d_vdpu2_wait    (void *hal, HalTaskInfo *task);
+extern const MppHalApi hal_vp8d_vdpu2;
 
 #endif

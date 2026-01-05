@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_H264D_VDPU_COM_H__
-#define __HAL_H264D_VDPU_COM_H__
+#ifndef HAL_H264D_VDPU_COM_H
+#define HAL_H264D_VDPU_COM_H
 
 #include "rk_type.h"
 
@@ -101,9 +101,6 @@ typedef struct h264d_vdpu_reg_ctx_t {
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-RK_U32 vdpu_ver_align(RK_U32 val);
-RK_U32 vdpu_hor_align(RK_U32 val);
 
 MPP_RET adjust_input(H264dVdpuPriv_t *priv,
                      DXVA_Slice_H264_Long *p_long,

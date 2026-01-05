@@ -14,8 +14,8 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-#ifndef __VP9D_PARSER_H__
-#define __VP9D_PARSER_H__
+#ifndef VP9D_PARSER_H
+#define VP9D_PARSER_H
 
 #include <stdlib.h>
 
@@ -38,7 +38,7 @@ extern RK_U32 vp9d_debug;
 
 
 
-#define vp9d_dbg(flag, fmt, ...) _mpp_dbg(vp9d_debug, flag, fmt, ##__VA_ARGS__)
+#define vp9d_dbg(flag, fmt, ...) mpp_dbg(vp9d_debug, flag, fmt, ##__VA_ARGS__)
 
 enum CompPredMode {
     PRED_SINGLEREF,
@@ -85,7 +85,7 @@ struct VP9mvrefPair {
     RK_S8 ref[2];
 };
 
-typedef struct RefInfo {
+typedef struct VP9RefInfo {
     RK_S32 ref_count;
     RK_U32 invisible;
     RK_U32 segMapIndex;
@@ -295,4 +295,4 @@ RK_S32 vp9d_parser2_syntax(Vp9CodecContext *ctx);
 #endif
 
 
-#endif /* __VP9D_PARSER_H__ */
+#endif /* VP9D_PARSER_H */

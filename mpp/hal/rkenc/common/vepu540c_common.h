@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __VEPU540C_COMMON_H__
-#define __VEPU540C_COMMON_H__
+#ifndef VEPU540C_COMMON_H
+#define VEPU540C_COMMON_H
 
 #include "rk_venc_cmd.h"
 #include "mpp_device.h"
@@ -135,7 +135,7 @@ typedef struct Vepu540cSclCfg_t {
     ip_raw8  ip_v8[8];
 } vepu540c_scl_cfg;
 
-typedef struct PreCstPar_t {
+typedef struct Vepu540cPreCstPar_t {
     struct {
         RK_U32 madi_thd0    : 8;
         RK_U32 madi_thd1    : 8;
@@ -175,7 +175,7 @@ typedef struct PreCstPar_t {
     } cst_wgt2;
 } pre_cst_par;
 
-typedef struct RdoSkipPar_t {
+typedef struct Vepu540cRdoSkipPar_t {
     struct {
         RK_U32 madp_thd0    : 12;
         RK_U32 reserved     : 4;
@@ -206,7 +206,7 @@ typedef struct RdoSkipPar_t {
     } atf_wgt1;
 } rdo_skip_par;
 
-typedef struct RdoNoSkipPar_t {
+typedef struct Vepu540cRdoNoSkipPar_t {
     /* 0x00002080 reg2080 */
     struct {
         RK_U32 madp_thd0    : 12;
@@ -1778,4 +1778,4 @@ MPP_RET vepu540c_set_roi(void *roi_reg_base, MppEncROICfg * roi, RK_S32 w,
 #ifdef __cplusplus
 }
 #endif
-#endif              /* __VEPU540C_COMMON_H__ */
+#endif /* VEPU540C_COMMON_H */

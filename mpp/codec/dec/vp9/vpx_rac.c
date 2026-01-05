@@ -1,20 +1,21 @@
 /*
-*
-* Copyright 2015 Rockchip Electronics Co. LTD
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
+ * Copyright (C) 2016 The FFmpeg project
+ * Copyright (c) 2016 Rockchip Electronics Co., Ltd.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 
 #include "vpx_rac.h"
 
@@ -52,7 +53,7 @@ void vpx_init_range_decoder(VpxRangeCoder *c, const uint8_t *buf, int buf_size)
     c->code_word = bytestream_get_be24(&c->buffer);
 }
 
-unsigned int vpx_rac_renorm(VpxRangeCoder *c)
+rk_u32 vpx_rac_renorm(VpxRangeCoder *c)
 {
     int shift = vpx_norm_shift[c->high];
     int bits = c->bits;
@@ -69,7 +70,7 @@ unsigned int vpx_rac_renorm(VpxRangeCoder *c)
     return code_word;
 }
 
-int vpx_rac_get_prob(VpxRangeCoder *c, uint8_t prob)
+rk_s32 vpx_rac_get_prob(VpxRangeCoder *c, uint8_t prob)
 {
     unsigned int code_word = vpx_rac_renorm(c);
     unsigned int low = 1 + (((c->high - 1) * prob) >> 8);
@@ -83,7 +84,7 @@ int vpx_rac_get_prob(VpxRangeCoder *c, uint8_t prob)
 }
 
 // branchy variant, to be used where there's a branch based on the bit decoded
-int vpx_rac_get_prob_branchy(VpxRangeCoder *c, int prob)
+rk_s32 vpx_rac_get_prob_branchy(VpxRangeCoder *c, int prob)
 {
     unsigned long code_word = vpx_rac_renorm(c);
     unsigned low = 1 + (((c->high - 1) * prob) >> 8);
@@ -101,12 +102,12 @@ int vpx_rac_get_prob_branchy(VpxRangeCoder *c, int prob)
 }
 
 // rounding is different than vpx_rac_get, is vpx_rac_get wrong?
-int vpx_rac_get(VpxRangeCoder *c)
+rk_s32 vpx_rac_get(VpxRangeCoder *c)
 {
     return vpx_rac_get_prob(c, 128);
 }
 
-int vpx_rac_get_uint(VpxRangeCoder *c, int bits)
+rk_s32 vpx_rac_get_uint(VpxRangeCoder *c, int bits)
 {
     int value = 0;
 

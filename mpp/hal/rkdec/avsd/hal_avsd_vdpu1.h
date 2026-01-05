@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_AVSD_VDPU1_H__
-#define __HAL_AVSD_VDPU1_H__
+#ifndef HAL_AVSD_VDPU1_H
+#define HAL_AVSD_VDPU1_H
 
 #include "mpp_hal.h"
 
@@ -23,17 +23,10 @@
 extern "C" {
 #endif
 
-MPP_RET hal_avsd_vdpu1_init(void *decoder, MppHalCfg *cfg);
-MPP_RET hal_avsd_vdpu1_deinit(void *decoder);
-MPP_RET hal_avsd_vdpu1_gen_regs(void *decoder, HalTaskInfo *task);
-MPP_RET hal_avsd_vdpu1_start(void *decoder, HalTaskInfo *task);
-MPP_RET hal_avsd_vdpu1_wait(void *decoder, HalTaskInfo *task);
-MPP_RET hal_avsd_vdpu1_reset(void *decoder);
-MPP_RET hal_avsd_vdpu1_flush(void *decoder);
-MPP_RET hal_avsd_vdpu1_control(void *decoder, MpiCmd cmd_type, void *param);
+extern const MppHalApi hal_avsd_vdpu1;
 
 #ifdef  __cplusplus
 }
 #endif
 
-#endif /*__HAL_AVSD_VDPU1_H__*/
+#endif /* HAL_AVSD_VDPU1_H */

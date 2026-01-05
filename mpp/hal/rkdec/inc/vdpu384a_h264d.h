@@ -3,8 +3,8 @@
  * Copyright (c) 2024 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __VDPU384A_H264D_H__
-#define __VDPU384A_H264D_H__
+#ifndef VDPU384A_H264D_H
+#define VDPU384A_H264D_H
 
 #include "vdpu384a_com.h"
 
@@ -172,10 +172,8 @@ typedef struct Vdpu384aH264dRegSet_t {
     Vdpu384aRegVersion     reg_version;       /* 0 */
     Vdpu384aCtrlReg        ctrl_regs;         /* 8-30 */
     Vdpu384aRegCommonAddr  common_addr;       /* 128-134, 140-161 */
-    // Vdpu384aRegNew         new_add;           /* 320-359 */
-
     Vdpu384aRegH264dParam  h264d_paras;       /* 64-74, 80-106 */
     Vdpu384aRegH264dAddr   h264d_addrs;       /* 168-185, 192-210, 216-232 */
 } Vdpu384aH264dRegSet;
 
-#endif /* __VDPU384A_H264D_H__ */
+#endif /* VDPU384A_H264D_H */

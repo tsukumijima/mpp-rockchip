@@ -3,8 +3,8 @@
  * Copyright (c) 2024 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_SINGLETON_H__
-#define __MPP_SINGLETON_H__
+#ifndef MPP_SINGLETON_H
+#define MPP_SINGLETON_H
 
 #include "rk_type.h"
 
@@ -48,9 +48,7 @@ typedef enum MppSingletonId_e {
     MPP_SGLN_ENC_CFG,
     MPP_SGLN_DEC_CFG,
     MPP_SGLN_ENC_RC_API,
-
-    /* max count for start init process */
-    MPP_SGLN_MAX_CNT,
+    MPP_SGLN_ENC_ARGS,
 } MppSingletonId;
 
 typedef struct MppSingletonInfo_t {
@@ -77,6 +75,20 @@ typedef struct MppSingletonInfo_t {
         mpp_singleton_add(&info, __FUNCTION__); \
     }
 
+/* add module without init order */
+#define MPP_MODULE_ADD(name, init, deinit) \
+    /* increase id from base id to avoid compiler warning */ \
+    __attribute__((constructor(SNGL_BASE_ID + 64))) \
+    static void SNGL_TO_FUNC(name)(void) { \
+        MppSingletonInfo info = { \
+            -1, \
+            SNGL_TO_STR(name), \
+            init, \
+            deinit, \
+        }; \
+        mpp_singleton_add(&info, __FUNCTION__); \
+    }
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -87,4 +99,4 @@ rk_s32 mpp_singleton_add(MppSingletonInfo *info, const char *caller);
 }
 #endif
 
-#endif /* __MPP_SINGLETON_H__ */
+#endif /* MPP_SINGLETON_H */

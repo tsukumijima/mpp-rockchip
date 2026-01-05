@@ -3,17 +3,17 @@
  * Copyright (c) 2015 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_ALLOCATOR_H__
-#define __MPP_ALLOCATOR_H__
+#ifndef MPP_ALLOCATOR_H
+#define MPP_ALLOCATOR_H
 
 #include "mpp_buffer.h"
 
 typedef enum MppAllocFlagType_e {
-    MPP_ALLOC_FLAG_NONE         = 0,
-    MPP_ALLOC_FLAG_DMA32        = (1 << 0),
-    MPP_ALLOC_FLAG_CACHABLE     = (1 << 1),
-    MPP_ALLOC_FLAG_CMA          = (1 << 2),
-    MPP_ALLOC_FLAG_TYPE_MASK    = MPP_ALLOC_FLAG_CMA | MPP_ALLOC_FLAG_CACHABLE | MPP_ALLOC_FLAG_DMA32,
+    MPP_ALLOC_FLAG_NONE         = 0U,
+    MPP_ALLOC_FLAG_DMA32        = MPP_BIT(0),
+    MPP_ALLOC_FLAG_CACHABLE     = MPP_BIT(1),
+    MPP_ALLOC_FLAG_CMA          = MPP_BIT(2),
+    MPP_ALLOC_FLAG_TYPE_MASK    = MPP_FLAG_OR(MPP_ALLOC_FLAG_CMA, MPP_ALLOC_FLAG_CACHABLE, MPP_ALLOC_FLAG_DMA32),
     MPP_ALLOC_FLAG_TYPE_NB,
 } MppAllocFlagType;
 
@@ -44,4 +44,4 @@ MppAllocFlagType mpp_allocator_get_flags(const MppAllocator allocator);
 }
 #endif
 
-#endif /*__MPP_ALLOCATOR_H__*/
+#endif /* MPP_ALLOCATOR_H */

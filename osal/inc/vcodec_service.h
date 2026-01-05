@@ -3,8 +3,8 @@
  * Copyright (c) 2020 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __VCODEC_SERVICE_H__
-#define __VCODEC_SERVICE_H__
+#ifndef VCODEC_SERVICE_H
+#define VCODEC_SERVICE_H
 
 #include "rk_type.h"
 
@@ -33,7 +33,7 @@
 #define VEPU2_REGISTERS                     (184)
 #define RKVENC_REGISTERS                    (140)
 
-#define EXTRA_INFO_SIZE                     (sizeof(RK_U32) * 34)
+#define EXTRA_INFO_SIZE                     (sizeof(RK_U32) * 34U)
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,4 +45,4 @@ const char *mpp_get_vcodec_dev_name(MppCtxType type, MppCodingType coding);
 }
 #endif
 
-#endif /* __VCODEC_SERVICE_H__ */
+#endif /* VCODEC_SERVICE_H */

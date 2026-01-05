@@ -3,8 +3,8 @@
  * Copyright (c) 2016 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __RC_BASE_H__
-#define __RC_BASE_H__
+#ifndef RC_BASE_H
+#define RC_BASE_H
 
 #include "mpp_list.h"
 #include "mpp_enc_cfg.h"
@@ -34,7 +34,7 @@ typedef struct MppDataV2_t {
     RK_S32  pos_w;
     RK_S32  pos_ahead;
     RK_S64  sum;
-    RK_S32  val[];
+    RK_S32  val[0];
 } MppDataV2;
 
 #ifdef __cplusplus
@@ -55,4 +55,4 @@ RK_S32 mpp_data_sum_with_ratio_v2(MppDataV2 *p, RK_S32 len, RK_S32 num, RK_S32 d
 }
 #endif
 
-#endif /* __RC_BASE_H__ */
+#endif /* RC_BASE_H */

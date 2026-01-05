@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_JPEGE_DEBUG_H__
-#define __HAL_JPEGE_DEBUG_H__
+#ifndef HAL_JPEGE_DEBUG_H
+#define HAL_JPEGE_DEBUG_H
 
 #include "mpp_debug.h"
 
@@ -25,8 +25,8 @@
 #define HAL_JPEGE_DBG_INPUT             (0x00000010)
 #define HAL_JPEGE_DBG_OUTPUT            (0x00000020)
 
-#define hal_jpege_dbg(flag, fmt, ...)   _mpp_dbg(hal_jpege_debug, flag, fmt, ## __VA_ARGS__)
-#define hal_jpege_dbg_f(flag, fmt, ...) _mpp_dbg_f(hal_jpege_debug, flag, fmt, ## __VA_ARGS__)
+#define hal_jpege_dbg(flag, fmt, ...)   mpp_dbg(hal_jpege_debug, flag, fmt, ## __VA_ARGS__)
+#define hal_jpege_dbg_f(flag, fmt, ...) mpp_dbg_f(hal_jpege_debug, flag, fmt, ## __VA_ARGS__)
 
 #define hal_jpege_dbg_func(fmt, ...)    hal_jpege_dbg_f(HAL_JPEGE_DBG_FUNCTION, fmt, ## __VA_ARGS__)
 #define hal_jpege_dbg_simple(fmt, ...)  hal_jpege_dbg(HAL_JPEGE_DBG_SIMPLE, fmt, ## __VA_ARGS__)
@@ -40,4 +40,4 @@
 
 extern RK_U32 hal_jpege_debug;
 
-#endif /* __HAL_JPEGE_DEBUG_H__ */
+#endif /* HAL_JPEGE_DEBUG_H */

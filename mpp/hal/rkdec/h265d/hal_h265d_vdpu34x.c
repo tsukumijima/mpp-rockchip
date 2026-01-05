@@ -30,6 +30,7 @@
 #include "hal_h265d_com.h"
 #include "hal_h265d_vdpu34x.h"
 #include "vdpu34x_h265d.h"
+#include "vdpu_com.h"
 
 /* #define dump */
 #ifdef dump
@@ -101,8 +102,8 @@ static MPP_RET hal_h265d_vdpu34x_init(void *hal, MppHalCfg *cfg)
     RK_S32 ret = 0;
     HalH265dCtx *reg_ctx = (HalH265dCtx *)hal;
 
-    mpp_slots_set_prop(reg_ctx->slots, SLOTS_HOR_ALIGN, hevc_hor_align);
-    mpp_slots_set_prop(reg_ctx->slots, SLOTS_VER_ALIGN, hevc_ver_align);
+    mpp_slots_set_prop(reg_ctx->slots, SLOTS_HOR_ALIGN, mpp_align_256_odd);
+    mpp_slots_set_prop(reg_ctx->slots, SLOTS_VER_ALIGN, mpp_align_8);
 
     reg_ctx->scaling_qm = mpp_calloc(DXVA_Qmatrix_HEVC, 1);
     if (reg_ctx->scaling_qm == NULL) {
@@ -129,7 +130,7 @@ static MPP_RET hal_h265d_vdpu34x_init(void *hal, MppHalCfg *cfg)
 
     {
         RK_U32 i = 0;
-        RK_U32 max_cnt = reg_ctx->fast_mode ? MAX_GEN_REG : 1;
+        RK_U32 max_cnt = reg_ctx->fast_mode ? VDPU_FAST_REG_SET_CNT : 1;
 
         //!< malloc buffers
         ret = mpp_buffer_get(reg_ctx->group, &reg_ctx->bufs, ALL_BUFFER_SIZE(max_cnt));
@@ -664,7 +665,7 @@ static RK_S32 hal_h265d_output_pps_packet(void *hal, void *dxva)
     return 0;
 }
 
-static void h265d_refine_rcb_size(Vdpu34xRcbInfo *rcb_info,
+static void h265d_refine_rcb_size(VdpuRcbInfo *rcb_info,
                                   Vdpu34xH265dRegSet *hw_regs,
                                   RK_S32 width, RK_S32 height, void *dxva)
 {
@@ -788,8 +789,8 @@ static void hal_h265d_rcb_info_update(void *hal,  void *dxva,
         RK_U32 i = 0;
         RK_U32 loop = reg_ctx->fast_mode ? MPP_ARRAY_ELEMS(reg_ctx->g_buf) : 1;
 
-        reg_ctx->rcb_buf_size = vdpu34x_get_rcb_buf_size((Vdpu34xRcbInfo*)reg_ctx->rcb_info, width, height);
-        h265d_refine_rcb_size((Vdpu34xRcbInfo*)reg_ctx->rcb_info, hw_regs, width, height, dxva_cxt);
+        reg_ctx->rcb_buf_size = vdpu34x_get_rcb_buf_size((VdpuRcbInfo*)reg_ctx->rcb_info, width, height);
+        h265d_refine_rcb_size((VdpuRcbInfo*)reg_ctx->rcb_info, hw_regs, width, height, dxva_cxt);
 
         for (i = 0; i < loop; i++) {
             MppBuffer rcb_buf;
@@ -867,7 +868,7 @@ static MPP_RET hal_h265d_vdpu34x_gen_regs(void *hal,  HalTaskInfo *syn)
     }
 
     if (reg_ctx ->fast_mode) {
-        for (i = 0; i < MAX_GEN_REG; i++) {
+        for (i = 0; i < VDPU_FAST_REG_SET_CNT; i++) {
             if (!reg_ctx->g_buf[i].use_flag) {
                 syn->dec.reg_index = i;
 
@@ -880,7 +881,7 @@ static MPP_RET hal_h265d_vdpu34x_gen_regs(void *hal,  HalTaskInfo *syn)
                 break;
             }
         }
-        if (i == MAX_GEN_REG) {
+        if (i == VDPU_FAST_REG_SET_CNT) {
             mpp_err("hevc rps buf all used");
             return MPP_ERR_NOMEM;
         }
@@ -1119,7 +1120,7 @@ static MPP_RET hal_h265d_vdpu34x_gen_regs(void *hal,  HalTaskInfo *syn)
     }
 
     if ((reg_ctx->error_index[syn->dec.reg_index] == dxva_cxt->pp.CurrPic.Index7Bits) &&
-        !dxva_cxt->pp.IntraPicFlag) {
+        !dxva_cxt->pp.IntraPicFlag && !reg_ctx->cfg->base.disable_error) {
         h265h_dbg(H265H_DBG_TASK_ERR, "current frm may be err, should skip process");
         syn->dec.flags.ref_err = 1;
         return MPP_OK;
@@ -1143,7 +1144,7 @@ static MPP_RET hal_h265d_vdpu34x_gen_regs(void *hal,  HalTaskInfo *syn)
     hal_h265d_rcb_info_update(hal, dxva_cxt, hw_regs, width, height);
     vdpu34x_setup_rcb(&hw_regs->common_addr, reg_ctx->dev, reg_ctx->fast_mode ?
                       reg_ctx->rcb_buf[syn->dec.reg_index] : reg_ctx->rcb_buf[0],
-                      (Vdpu34xRcbInfo*)reg_ctx->rcb_info);
+                      (VdpuRcbInfo*)reg_ctx->rcb_info);
     vdpu34x_setup_statistic(&hw_regs->common, &hw_regs->statistic);
     mpp_buffer_sync_end(reg_ctx->bufs);
 
@@ -1262,7 +1263,7 @@ static MPP_RET hal_h265d_vdpu34x_start(void *hal, HalTaskInfo *task)
         }
 
         /* rcb info for sram */
-        vdpu34x_set_rcbinfo(reg_ctx->dev, (Vdpu34xRcbInfo*)reg_ctx->rcb_info);
+        vdpu34x_set_rcbinfo(reg_ctx->dev, (VdpuRcbInfo*)reg_ctx->rcb_info);
 
         ret = mpp_dev_ioctl(reg_ctx->dev, MPP_DEV_CMD_SEND, NULL);
         if (ret) {

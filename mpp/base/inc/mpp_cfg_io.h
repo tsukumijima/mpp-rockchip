@@ -3,8 +3,8 @@
  * Copyright (c) 2025 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_CFG_IO__
-#define __MPP_CFG_IO__
+#ifndef MPP_CFG_IO_H
+#define MPP_CFG_IO_H
 
 #include "rk_mpp_cfg.h"
 
@@ -65,8 +65,6 @@ rk_s32 mpp_cfg_del(MppCfgObj obj);
 /* find by name string */
 rk_s32 mpp_cfg_find(MppCfgObj *obj, MppCfgObj root, char *name, rk_s32 type);
 
-/* attach MppCfgInfo for access location */
-rk_s32 mpp_cfg_set_info(MppCfgObj obj, MppCfgInfo *info);
 /* attach KmppEntry for access location */
 rk_s32 mpp_cfg_set_entry(MppCfgObj obj, KmppEntry *entry);
 /* add cfg obj condition for input / output option */
@@ -101,4 +99,4 @@ rk_s32 mpp_cfg_print_string(char *buf);
 }
 #endif
 
-#endif /* __MPP_CFG_IO__ */
+#endif /* MPP_CFG_IO_H */

@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef __VP8D_PARSER_H__
-#define __VP8D_PARSER_H__
+#ifndef VP8D_PARSER_H
+#define VP8D_PARSER_H
 
 #include <stdio.h>
 
@@ -41,7 +41,7 @@
 
 #define VP8D_BUF_SIZE_BITMEM   (512 * 1024)
 #define VP8D_PROB_TABLE_SIZE  (1<<16) /* TODO */
-#define VP8D_MAX_SEGMAP_SIZE  (2048 + 1024)  //1920*1080 /* TODO */
+#define VP8D_MAX_SEGMAP_SIZE  (2048 + 1024)  //1920*1080
 #define VP8_KEY_FRAME_START_CODE    0x9d012a
 
 #define VP8D_DBG_FUNCTION          (0x00000001)

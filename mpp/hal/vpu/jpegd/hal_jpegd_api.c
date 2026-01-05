@@ -29,42 +29,63 @@
 #include "hal_jpegd_vdpu2.h"
 #include "hal_jpegd_vdpu1.h"
 #include "hal_jpegd_rkv.h"
+#include "hal_jpegd_vpu730.h"
+#include "hal_jpegd_vpu7xx_com.h"
 
 static MPP_RET hal_jpegd_reg_gen(void *hal, HalTaskInfo *task)
 {
     JpegdHalCtx *self = (JpegdHalCtx *)hal;
-    return self->hal_api.reg_gen (hal, task);
+
+    if (NULL == self || NULL == self->hal_api || NULL == self->hal_api->reg_gen)
+        return MPP_ERR_NULL_PTR;
+
+    return self->hal_api->reg_gen(hal, task);
 }
 
 static MPP_RET hal_jpegd_start(void *hal, HalTaskInfo *task)
 {
     JpegdHalCtx *self = (JpegdHalCtx *)hal;
-    return self->hal_api.start (hal, task);
+
+    if (NULL == self || NULL == self->hal_api || NULL == self->hal_api->start)
+        return MPP_ERR_NULL_PTR;
+
+    return self->hal_api->start(hal, task);
 }
 
 static MPP_RET hal_jpegd_wait(void *hal, HalTaskInfo *task)
 {
     JpegdHalCtx *self = (JpegdHalCtx *)hal;
-    return self->hal_api.wait (hal, task);
+
+    if (NULL == self || NULL == self->hal_api || NULL == self->hal_api->wait)
+        return MPP_ERR_NULL_PTR;
+
+    return self->hal_api->wait(hal, task);
 }
 
 static MPP_RET hal_jpegd_control(void *hal, MpiCmd cmd_type, void *param)
 {
     JpegdHalCtx *self = (JpegdHalCtx *)hal;
-    return self->hal_api.control (hal, cmd_type, param);
+
+    if (NULL == self || NULL == self->hal_api || NULL == self->hal_api->control)
+        return MPP_ERR_NULL_PTR;
+
+    return self->hal_api->control(hal, cmd_type, param);
 }
 
 static MPP_RET hal_jpegd_deinit(void *hal)
 {
     JpegdHalCtx *self = (JpegdHalCtx *)hal;
-    return self->hal_api.deinit (hal);
+
+    if (NULL == self || NULL == self->hal_api || NULL == self->hal_api->deinit)
+        return MPP_ERR_NULL_PTR;
+
+    return self->hal_api->deinit(hal);
 }
 
 static MPP_RET hal_jpegd_init(void *hal, MppHalCfg *cfg)
 {
     MPP_RET ret = MPP_ERR_UNKNOW;
     JpegdHalCtx *self = (JpegdHalCtx *)hal;
-    MppHalApi *p_api = NULL;
     MppClientType client_type = VPU_CLIENT_BUTT;
     MppDecBaseCfg *base = &cfg->cfg->base;
     RK_S32 hw_type = -1;
@@ -74,8 +95,6 @@ static MPP_RET hal_jpegd_init(void *hal, MppHalCfg *cfg)
         return MPP_ERR_VALUE;
 
     memset(self, 0, sizeof(JpegdHalCtx));
-
-    p_api = &self->hal_api;
 
     hw_flag = mpp_get_vcodec_type();
 
@@ -109,29 +128,20 @@ static MPP_RET hal_jpegd_init(void *hal, MppHalCfg *cfg)
     switch (client_type) {
     case VPU_CLIENT_VDPU2 :
     case VPU_CLIENT_VDPU2_PP : {
-        p_api->init = hal_jpegd_vdpu2_init;
-        p_api->deinit = hal_jpegd_vdpu2_deinit;
-        p_api->reg_gen = hal_jpegd_vdpu2_gen_regs;
-        p_api->start = hal_jpegd_vdpu2_start;
-        p_api->wait = hal_jpegd_vdpu2_wait;
-        p_api->control = hal_jpegd_vdpu2_control;
+        self->hal_api = &hal_jpegd_vdpu2;
     } break;
     case VPU_CLIENT_VDPU1 :
     case VPU_CLIENT_VDPU1_PP : {
-        p_api->init = hal_jpegd_vdpu1_init;
-        p_api->deinit = hal_jpegd_vdpu1_deinit;
-        p_api->reg_gen = hal_jpegd_vdpu1_gen_regs;
-        p_api->start = hal_jpegd_vdpu1_start;
-        p_api->wait = hal_jpegd_vdpu1_wait;
-        p_api->control = hal_jpegd_vdpu1_control;
+        self->hal_api = &hal_jpegd_vdpu1;
     } break;
     case VPU_CLIENT_JPEG_DEC : {
-        p_api->init = hal_jpegd_rkv_init;
-        p_api->deinit = hal_jpegd_rkv_deinit;
-        p_api->reg_gen = hal_jpegd_rkv_gen_regs;
-        p_api->start = hal_jpegd_rkv_start;
-        p_api->wait = hal_jpegd_rkv_wait;
-        p_api->control = hal_jpegd_rkv_control;
+        RockchipSocType soc = mpp_get_soc_type();
+
+        if (soc >= ROCKCHIP_SOC_RK3538) {
+            self->hal_api = &hal_jpegd_vpu730;
+        } else {
+            self->hal_api = &hal_jpegd_rkv;
+        }
     } break;
     default : {
         return MPP_ERR_INIT;
@@ -148,7 +158,7 @@ static MPP_RET hal_jpegd_init(void *hal, MppHalCfg *cfg)
     self->hw_info = cfg->hw_info;
     self->dev = cfg->dev;
 
-    ret = p_api->init(hal, cfg);
+    ret = self->hal_api->init(hal, cfg);
     if (ret) {
         mpp_err("init device with client_type %d failed!\n", client_type);
         mpp_dev_deinit(cfg->dev);

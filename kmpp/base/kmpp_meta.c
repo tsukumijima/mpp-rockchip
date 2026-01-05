@@ -23,7 +23,7 @@
 #define KMETA_DBG_SET               (0x00000004)
 #define KMETA_DBG_GET               (0x00000008)
 
-#define kmeta_dbg(flag, fmt, ...)   _mpp_dbg_f(kmpp_meta_debug, flag, fmt, ## __VA_ARGS__)
+#define kmeta_dbg(flag, fmt, ...)   mpp_dbg_f(kmpp_meta_debug, flag, fmt, ## __VA_ARGS__)
 
 #define kmeta_dbg_func(fmt, ...)    kmeta_dbg(KMETA_DBG_FUNC, fmt, ## __VA_ARGS__)
 #define kmeta_dbg_size(fmt, ...)    kmeta_dbg(KMETA_DBG_SIZE, fmt, ## __VA_ARGS__)
@@ -182,7 +182,7 @@ static void kmpp_meta_init(void)
     srv_meta = srv;
 }
 
-MPP_SINGLETON(MPP_SGLN_KMPP_META, kmpp_meta, kmpp_meta_init, kmpp_meta_deinit);
+MPP_SINGLETON(MPP_SGLN_KMPP_META, kmpp_meta, kmpp_meta_init, kmpp_meta_deinit)
 
 static void *meta_key_to_addr(KmppObj meta, KmppMetaKey key, KmppMetaType type)
 {

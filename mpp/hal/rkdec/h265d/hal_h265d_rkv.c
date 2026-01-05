@@ -44,7 +44,7 @@ static MPP_RET hal_h265d_alloc_res(void *hal)
     RK_S32 ret = 0;
     HalH265dCtx *reg_ctx = (HalH265dCtx *)hal;
     if (reg_ctx->fast_mode) {
-        for (i = 0; i < MAX_GEN_REG; i++) {
+        for (i = 0; i < VDPU_FAST_REG_SET_CNT; i++) {
             reg_ctx->g_buf[i].hw_regs =
                 mpp_calloc_size(void, sizeof(H265d_REGS_t));
             ret = mpp_buffer_get(reg_ctx->group,
@@ -100,7 +100,7 @@ static MPP_RET hal_h265d_release_res(void *hal)
     HalH265dCtx *reg_ctx = ( HalH265dCtx *)hal;
     RK_S32 i = 0;
     if (reg_ctx->fast_mode) {
-        for (i = 0; i < MAX_GEN_REG; i++) {
+        for (i = 0; i < VDPU_FAST_REG_SET_CNT; i++) {
             if (reg_ctx->g_buf[i].scaling_list_data) {
                 ret = mpp_buffer_put(reg_ctx->g_buf[i].scaling_list_data);
                 if (ret) {
@@ -166,8 +166,8 @@ MPP_RET hal_h265d_rkv_init(void *hal, MppHalCfg *cfg)
     MPP_RET ret = MPP_NOK;
     HalH265dCtx *reg_ctx = (HalH265dCtx *)hal;
 
-    mpp_slots_set_prop(reg_ctx->slots, SLOTS_HOR_ALIGN, hevc_hor_align);
-    mpp_slots_set_prop(reg_ctx->slots, SLOTS_VER_ALIGN, hevc_ver_align);
+    mpp_slots_set_prop(reg_ctx->slots, SLOTS_HOR_ALIGN, mpp_align_256_odd);
+    mpp_slots_set_prop(reg_ctx->slots, SLOTS_VER_ALIGN, mpp_align_8);
 
     reg_ctx->scaling_qm = mpp_calloc(DXVA_Qmatrix_HEVC, 1);
     reg_ctx->sw_rps_buf = mpp_calloc(RK_U64, 400);
@@ -750,7 +750,7 @@ MPP_RET hal_h265d_rkv_gen_regs(void *hal,  HalTaskInfo *syn)
 
     void *rps_ptr = NULL;
     if (reg_ctx ->fast_mode) {
-        for (i = 0; i < MAX_GEN_REG; i++) {
+        for (i = 0; i < VDPU_FAST_REG_SET_CNT; i++) {
             if (!reg_ctx->g_buf[i].use_flag) {
                 syn->dec.reg_index = i;
                 reg_ctx->rps_data = reg_ctx->g_buf[i].rps_data;
@@ -762,7 +762,7 @@ MPP_RET hal_h265d_rkv_gen_regs(void *hal,  HalTaskInfo *syn)
                 break;
             }
         }
-        if (i == MAX_GEN_REG) {
+        if (i == VDPU_FAST_REG_SET_CNT) {
             mpp_err("hevc rps buf all used");
             return MPP_ERR_NOMEM;
         }

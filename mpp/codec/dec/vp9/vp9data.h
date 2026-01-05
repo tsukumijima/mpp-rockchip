@@ -1,20 +1,21 @@
 /*
-*
-* Copyright 2015 Rockchip Electronics Co. LTD
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
+ * Copyright (C) 2016 The FFmpeg project
+ * Copyright (c) 2016 Rockchip Electronics Co., Ltd.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 
 #ifndef VP9DATA_H
 #define VP9DATA_H
@@ -27,12 +28,6 @@ enum BlockPartition {
     PARTITION_H,       // [-]   |
     PARTITION_V,       // [|]   |
     PARTITION_SPLIT,   // [+] --'
-};
-
-static const RK_S8 vp9_partition_tree[3][2] = {
-    { -PARTITION_NONE, 1 },               // '0'
-    { -PARTITION_H, 2 },                 // '10'
-    { -PARTITION_V, -PARTITION_SPLIT }, // '110', '111'
 };
 
 static const RK_U8 vp9_default_kf_partition_probs[4][4][3] = {
@@ -67,18 +62,6 @@ static const RK_S8 vp9_segmentation_tree[7][2] = {
     { -2, -3 }, // '01x'
     { -4, -5 }, // '10x'
     { -6, -7 }, // '11x'
-};
-
-static const RK_S8 vp9_intramode_tree[9][2] = {
-    { -DC_PRED, 1 },                                  // '0'
-    { -TM_VP8_PRED, 2 },                             // '10'
-    { -VERT_PRED, 3 },                              // '110'
-    { 4, 6 },
-    { -HOR_PRED, 5 },                             // '11100'
-    { -DIAG_DOWN_RIGHT_PRED, -VERT_RIGHT_PRED }, // '11101x'
-    { -DIAG_DOWN_LEFT_PRED, 7 },                  // '11110'
-    { -VERT_LEFT_PRED, 8 },                      // '111110'
-    { -HOR_DOWN_PRED, -HOR_UP_PRED },           // '111111x'
 };
 
 static const RK_U8 vp9_default_kf_ymode_probs[10][10][9] = {
@@ -562,7 +545,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 195,  29, 183 },
                     {  84,  49, 136 },
-                    {   8,  42,  71 }
+                    {   8,  42,  71 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  31, 107, 169 },
                     {  35,  99, 159 },
@@ -603,7 +589,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 191, 107, 226 },
                     { 124, 117, 204 },
-                    {  25,  99, 155 }
+                    {  25,  99, 155 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  29, 148, 210 },
                     {  37, 126, 194 },
@@ -646,7 +635,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 214,  49, 220 },
                     { 132,  63, 188 },
-                    {  42,  65, 137 }
+                    {  42,  65, 137 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  85, 137, 221 },
                     { 104, 131, 216 },
@@ -687,7 +679,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 229,  99, 249 },
                     { 143, 111, 235 },
-                    {  46, 109, 192 }
+                    {  46, 109, 192 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  82, 158, 236 },
                     {  94, 146, 224 },
@@ -732,7 +727,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 125,  34, 187 },
                     {  52,  41, 133 },
-                    {   6,  31,  56 }
+                    {   6,  31,  56 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  37, 109, 153 },
                     {  51, 102, 147 },
@@ -773,7 +771,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 202, 105, 245 },
                     { 108, 106, 216 },
-                    {  18,  90, 144 }
+                    {  18,  90, 144 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  33, 172, 219 },
                     {  64, 149, 206 },
@@ -816,7 +817,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 212,  35, 215 },
                     { 113,  47, 169 },
-                    {  29,  48, 105 }
+                    {  29,  48, 105 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  74, 129, 203 },
                     { 106, 120, 203 },
@@ -857,7 +861,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 225,  86, 251 },
                     { 144, 104, 235 },
-                    {  42,  99, 181 }
+                    {  42,  99, 181 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  85, 175, 239 },
                     { 112, 165, 229 },
@@ -902,7 +909,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     {   7,  27, 153 },
                     {   5,  30,  95 },
-                    {   1,  16,  30 }
+                    {   1,  16,  30 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  50,  75, 127 },
                     {  57,  75, 124 },
@@ -943,7 +953,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     {  19,  55, 240 },
                     {  19,  59, 196 },
-                    {   3,  52, 105 }
+                    {   3,  52, 105 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  41, 166, 207 },
                     { 104, 153, 199 },
@@ -986,7 +999,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 211,  29, 217 },
                     {  96,  47, 156 },
-                    {  22,  43,  87 }
+                    {  22,  43,  87 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  78, 120, 193 },
                     { 111, 116, 186 },
@@ -1027,7 +1043,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 233,  29, 248 },
                     { 146,  47, 220 },
-                    {  43,  52, 140 }
+                    {  43,  52, 140 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     { 100, 163, 232 },
                     { 179, 161, 222 },
@@ -1072,7 +1091,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     {  17,  38, 140 },
                     {   7,  34,  80 },
-                    {   1,  17,  29 }
+                    {   1,  17,  29 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  37,  75, 128 },
                     {  41,  76, 128 },
@@ -1113,7 +1135,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     {  36,  41, 235 },
                     {  29,  36, 193 },
-                    {  10,  27, 111 }
+                    {  10,  27, 111 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  85, 165, 222 },
                     { 177, 162, 215 },
@@ -1156,7 +1181,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 181,  21, 201 },
                     {  61,  37, 123 },
-                    {  10,  38,  71 }
+                    {  10,  38,  71 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     {  47, 106, 172 },
                     {  95, 104, 173 },
@@ -1197,7 +1225,10 @@ static const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3] = {
                 { /* Coeff Band 0 */
                     { 197,  13, 247 },
                     {  82,  17, 222 },
-                    {  25,  17, 162 }
+                    {  25,  17, 162 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 },
+                    {   0,   0,   0 }
                 }, { /* Coeff Band 1 */
                     { 126, 186, 247 },
                     { 234, 191, 243 },
@@ -1244,12 +1275,6 @@ enum MVJoint {
     MV_JOINT_H,
     MV_JOINT_V,
     MV_JOINT_HV,
-};
-
-static const RK_S8 vp9_mv_joint_tree[3][2] = {
-    { -MV_JOINT_ZERO, 1 },           // '0'
-    { -MV_JOINT_H, 2 },             // '10'
-    { -MV_JOINT_V, -MV_JOINT_HV }, // '11x'
 };
 
 static const RK_S8 vp9_mv_class_tree[10][2] = {

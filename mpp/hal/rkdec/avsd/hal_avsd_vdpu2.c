@@ -28,6 +28,9 @@
 #include "hal_avsd_vdpu2.h"
 #include "hal_avsd_vdpu2_reg.h"
 
+static MPP_RET hal_avsd_vdpu2_start(void *decoder, HalTaskInfo *task);
+static MPP_RET hal_avsd_vdpu2_wait(void *decoder, HalTaskInfo *task);
+
 static MPP_RET set_defalut_parameters(AvsdHalCtx_t *p_hal)
 {
     AvsdVdpu2Regs_t *p_regs = (AvsdVdpu2Regs_t *)p_hal->p_regs;
@@ -471,7 +474,7 @@ __FAILED:
  ***********************************************************************
  */
 //extern "C"
-MPP_RET hal_avsd_vdpu2_init(void *decoder, MppHalCfg *cfg)
+static MPP_RET hal_avsd_vdpu2_init(void *decoder, MppHalCfg *cfg)
 {
     MPP_RET ret = MPP_ERR_UNKNOW;
     RK_U32 buf_size = 0;
@@ -485,9 +488,9 @@ MPP_RET hal_avsd_vdpu2_init(void *decoder, MppHalCfg *cfg)
     p_hal->p_regs = mpp_calloc_size(RK_U32, sizeof(AvsdVdpu2Regs_t));
     MEM_CHECK(ret, p_hal->p_regs);
 
-    mpp_slots_set_prop(p_hal->frame_slots, SLOTS_HOR_ALIGN, avsd_hor_align);
-    mpp_slots_set_prop(p_hal->frame_slots, SLOTS_VER_ALIGN, avsd_ver_align);
-    mpp_slots_set_prop(p_hal->frame_slots, SLOTS_LEN_ALIGN, avsd_len_align);
+    mpp_slots_set_prop(p_hal->frame_slots, SLOTS_HOR_ALIGN, mpp_align_16);
+    mpp_slots_set_prop(p_hal->frame_slots, SLOTS_VER_ALIGN, mpp_align_16);
+    mpp_slots_set_prop(p_hal->frame_slots, SLOTS_LEN_ALIGN, mpp_align_wxh2yuv422);
 
     p_hal->regs_num = 159;
     //!< initial for control
@@ -513,7 +516,7 @@ __FAILED:
  ***********************************************************************
  */
 //extern "C"
-MPP_RET hal_avsd_vdpu2_deinit(void *decoder)
+static MPP_RET hal_avsd_vdpu2_deinit(void *decoder)
 {
     AvsdHalCtx_t *p_hal = (AvsdHalCtx_t *)decoder;
 
@@ -536,7 +539,7 @@ MPP_RET hal_avsd_vdpu2_deinit(void *decoder)
  ***********************************************************************
  */
 //extern "C"
-MPP_RET hal_avsd_vdpu2_gen_regs(void *decoder, HalTaskInfo *task)
+static MPP_RET hal_avsd_vdpu2_gen_regs(void *decoder, HalTaskInfo *task)
 {
     MPP_RET ret = MPP_ERR_UNKNOW;
     AvsdHalCtx_t *p_hal = (AvsdHalCtx_t *)decoder;
@@ -564,7 +567,7 @@ __FAILED:
  ***********************************************************************
  */
 //extern "C"
-MPP_RET hal_avsd_vdpu2_start(void *decoder, HalTaskInfo *task)
+static MPP_RET hal_avsd_vdpu2_start(void *decoder, HalTaskInfo *task)
 {
     MPP_RET ret = MPP_ERR_UNKNOW;
     AvsdHalCtx_t *p_hal = (AvsdHalCtx_t *)decoder;
@@ -619,7 +622,7 @@ __RETURN:
  ***********************************************************************
  */
 //extern "C"
-MPP_RET hal_avsd_vdpu2_wait(void *decoder, HalTaskInfo *task)
+static MPP_RET hal_avsd_vdpu2_wait(void *decoder, HalTaskInfo *task)
 {
     MPP_RET ret = MPP_ERR_UNKNOW;
     AvsdHalCtx_t *p_hal = (AvsdHalCtx_t *)decoder;
@@ -671,7 +674,7 @@ __SKIP_HARD:
  ***********************************************************************
  */
 //extern "C"
-MPP_RET hal_avsd_vdpu2_reset(void *decoder)
+static MPP_RET hal_avsd_vdpu2_reset(void *decoder)
 {
     MPP_RET ret = MPP_ERR_UNKNOW;
     AvsdHalCtx_t *p_hal = (AvsdHalCtx_t *)decoder;
@@ -697,7 +700,7 @@ MPP_RET hal_avsd_vdpu2_reset(void *decoder)
  ***********************************************************************
  */
 //extern "C"
-MPP_RET hal_avsd_vdpu2_flush(void *decoder)
+static MPP_RET hal_avsd_vdpu2_flush(void *decoder)
 {
     MPP_RET ret = MPP_ERR_UNKNOW;
 
@@ -716,7 +719,7 @@ MPP_RET hal_avsd_vdpu2_flush(void *decoder)
  ***********************************************************************
  */
 //extern "C"
-MPP_RET hal_avsd_vdpu2_control(void *decoder, MpiCmd cmd_type, void *param)
+static MPP_RET hal_avsd_vdpu2_control(void *decoder, MpiCmd cmd_type, void *param)
 {
     MPP_RET ret = MPP_ERR_UNKNOW;
 
@@ -730,3 +733,19 @@ MPP_RET hal_avsd_vdpu2_control(void *decoder, MpiCmd cmd_type, void *param)
 
     return ret = MPP_OK;
 }
+
+const MppHalApi hal_avsd_vdpu2 = {
+    .name     = "avsd_vdpu2",
+    .type     = MPP_CTX_DEC,
+    .coding   = MPP_VIDEO_CodingAVS,
+    .ctx_size = sizeof(AvsdHalCtx_t),
+    .flag     = 0,
+    .init     = hal_avsd_vdpu2_init,
+    .deinit   = hal_avsd_vdpu2_deinit,
+    .reg_gen  = hal_avsd_vdpu2_gen_regs,
+    .start    = hal_avsd_vdpu2_start,
+    .wait     = hal_avsd_vdpu2_wait,
+    .reset    = hal_avsd_vdpu2_reset,
+    .flush    = hal_avsd_vdpu2_flush,
+    .control  = hal_avsd_vdpu2_control,
+};

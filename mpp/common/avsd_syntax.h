@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef __AVSD_SYNTAX_H__
-#define __AVSD_SYNTAX_H__
+#ifndef AVSD_SYNTAX_H
+#define AVSD_SYNTAX_H
 
 #include "rk_type.h"
 
 
 //!< cavs decoder picture parameters structure
-typedef struct _PicParams_Avsd {
+typedef struct PicParams_Avsd_t {
     //!< sequence header
     RK_U32 profileId;
     RK_U32 levelId;
@@ -96,5 +96,5 @@ typedef struct avsd_syntax_t {
 
 
 
-#endif /*__AVSD_SYNTAX_H__*/
+#endif /* AVSD_SYNTAX_H */
 

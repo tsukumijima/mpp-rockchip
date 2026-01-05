@@ -3,8 +3,8 @@
  * Copyright (c) 2025 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_INTERNAL_H__
-#define __MPP_INTERNAL_H__
+#ifndef MPP_INTERNAL_H
+#define MPP_INTERNAL_H
 
 #include "rk_type.h"
 #include "mpp_err.h"
@@ -25,25 +25,6 @@ typedef void* MppIoc;
 typedef void* KmppObjDef;
 /* KmppObj    - mpp kernel object for string name access and function access */
 typedef void* KmppObj;
-
-typedef enum CfgType_e {
-    CFG_FUNC_TYPE_s32,
-    CFG_FUNC_TYPE_u32,
-    CFG_FUNC_TYPE_s64,
-    CFG_FUNC_TYPE_u64,
-    CFG_FUNC_TYPE_st,
-    CFG_FUNC_TYPE_ptr,
-    CFG_FUNC_TYPE_BUTT,
-} CfgType;
-
-typedef struct MppCfgInfo_t {
-    CfgType             data_type;
-    /* update flag info 32bit */
-    RK_U32              flag_offset;
-    /* data access info */
-    RK_U32              data_offset;
-    RK_S32              data_size;
-} MppCfgInfo;
 
 /*
  * kernel - userspace transaction trie node ctx info (64 bit) definition
@@ -178,4 +159,4 @@ typedef union KmppEntry_u {
     };
 } KmppEntry;
 
-#endif /*__MPP_INTERNAL_H__*/
+#endif /* MPP_INTERNAL_H */

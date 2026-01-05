@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __AV1D_PARSER_H__
-#define __AV1D_PARSER_H__
+#ifndef AV1D_PARSER_H
+#define AV1D_PARSER_H
 
 #include <stdlib.h>
 
@@ -40,10 +40,10 @@ extern RK_U32 av1d_debug;
 #define AV1D_DBG_STRMIN   (0x00000008)
 #define AV1D_DBG_DUMP_RPU (0x10000000)
 
-#define av1d_dbg(flag, fmt, ...) _mpp_dbg_f(av1d_debug, flag, fmt, ##__VA_ARGS__)
+#define av1d_dbg(flag, fmt, ...) mpp_dbg_f(av1d_debug, flag, fmt, ##__VA_ARGS__)
 #define av1d_dbg_func(fmt, ...)  av1d_dbg(AV1D_DBG_FUNCTION, fmt, ## __VA_ARGS__)
 
-typedef struct RefInfo {
+typedef struct AV1RefInfo {
     RK_S32 ref_count;
     RK_U32 invisible;
     RK_U32 is_output;
@@ -162,7 +162,7 @@ MPP_RET av1d_parser_init(Av1CodecContext *ctx, ParserCfg *init);
 
 MPP_RET av1d_parser_deinit(Av1CodecContext *ctx);
 
-RK_S32 av1d_parser_frame(Av1CodecContext *ctx, HalDecTask *in_task);
+MPP_RET av1d_parser_frame(Av1CodecContext *ctx, HalDecTask *in_task);
 
 void av1d_parser_update(Av1CodecContext *ctx, void *info);
 
@@ -195,4 +195,4 @@ void Av1StoreCDFs(AV1Context *ctx, RK_U32 refresh_frame_flags);
 }
 #endif
 
-#endif // __AV1D_PARSER_H__
+#endif // AV1D_PARSER_H

@@ -3,8 +3,8 @@
  * Copyright (c) 2024 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __VEPU510_COMMON_H__
-#define __VEPU510_COMMON_H__
+#ifndef VEPU510_COMMON_H
+#define VEPU510_COMMON_H
 
 #include "rk_venc_cmd.h"
 
@@ -46,7 +46,7 @@ typedef struct Vepu510Online_t {
     } adr_vsc_b;
 } vepu510_online;
 
-typedef struct RdoSkipPar_t {
+typedef struct Vepu510RdoSkipPar_t {
     struct {
         RK_U32 madp_thd0    : 12;
         RK_U32 reserved     : 4;
@@ -77,7 +77,7 @@ typedef struct RdoSkipPar_t {
     } atf_wgt1;
 } rdo_skip_par;
 
-typedef struct RdoNoSkipPar_t {
+typedef struct Vepu510RdoNoSkipPar_t {
     /* 0x00002080 reg2080 */
     struct {
         RK_U32 madp_thd0    : 12;
@@ -2222,4 +2222,4 @@ MPP_RET vepu510_set_roi(void *roi_reg_base, MppEncROICfg * roi, RK_S32 w,
 }
 #endif
 
-#endif /* __VEPU510_COMMON_H__ */
+#endif /* VEPU510_COMMON_H */

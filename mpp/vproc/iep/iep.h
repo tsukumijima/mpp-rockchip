@@ -16,8 +16,8 @@
 
 /* This header is for communication between userspace driver and kernel driver */
 
-#ifndef __IEP_H__
-#define __IEP_H__
+#ifndef IEP_H
+#define IEP_H
 
 #include <sys/ioctl.h>
 #include "rk_type.h"
@@ -87,12 +87,12 @@ enum {
 
 /*
 //          Alpha    Red     Green   Blue
-{  4, 32, {{32,24,  24,16,  16, 8,   8, 0 }}, GGL_RGBA },   // IEP_FORMAT_ARGB_8888
-{  4, 32, {{32,24,   8, 0,  16, 8,  24,16 }}, GGL_RGB  },   // IEP_FORMAT_ABGR_8888
-{  4, 32, {{ 8, 0,  32,24,  24,16,  16, 8 }}, GGL_RGB  },   // IEP_FORMAT_RGBA_8888
-{  4, 32, {{ 8, 0,  16, 8,  24,16,  32,24 }}, GGL_BGRA },   // IEP_FORMAT_BGRA_8888
-{  2, 16, {{ 0, 0,  16,11,  11, 5,   5, 0 }}, GGL_RGB  },   // IEP_FORMAT_RGB_565
-{  2, 16, {{ 0, 0,   5, 0,  11, 5,  16,11 }}, GGL_RGB  },   // IEP_FORMAT_RGB_565
+{  4, 32, {{32,24,  24,16,  16, 8,   8, 0 }}, GGL_RGBA },   IEP_FORMAT_ARGB_8888
+{  4, 32, {{32,24,   8, 0,  16, 8,  24,16 }}, GGL_RGB  },   IEP_FORMAT_ABGR_8888
+{  4, 32, {{ 8, 0,  32,24,  24,16,  16, 8 }}, GGL_RGB  },   IEP_FORMAT_RGBA_8888
+{  4, 32, {{ 8, 0,  16, 8,  24,16,  32,24 }}, GGL_BGRA },   IEP_FORMAT_BGRA_8888
+{  2, 16, {{ 0, 0,  16,11,  11, 5,   5, 0 }}, GGL_RGB  },   IEP_FORMAT_RGB_565
+{  2, 16, {{ 0, 0,   5, 0,  11, 5,  16,11 }}, GGL_RGB  },   IEP_FORMAT_RGB_565
 */
 
 // for hardware format value
@@ -236,4 +236,4 @@ typedef struct IepMsg_t {
     void    *base;
 } IepMsg;
 
-#endif /* __IEP_H__ */
+#endif /* IEP_H */

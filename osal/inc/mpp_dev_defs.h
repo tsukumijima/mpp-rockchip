@@ -3,8 +3,8 @@
  * Copyright (c) 2020 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_DEV_DEFS_H__
-#define __MPP_DEV_DEFS_H__
+#ifndef MPP_DEV_DEFS_H
+#define MPP_DEV_DEFS_H
 
 #include "rk_type.h"
 
@@ -67,7 +67,5 @@ typedef enum MppClientType_e {
 
 /* Platform image process hardware feature */
 #define HAVE_IPP            (0x00000001)
-#define HAVE_RGA            (0x00000002)
-#define HAVE_RGA2           (0x00000004)
 
-#endif /*__MPP_DEV_DEFS_H__*/
+#endif /* MPP_DEV_DEFS_H */

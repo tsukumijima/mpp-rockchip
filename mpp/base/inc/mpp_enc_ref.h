@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef __MPP_ENC_REF_H__
-#define __MPP_ENC_REF_H__
+#ifndef MPP_ENC_REF_H
+#define MPP_ENC_REF_H
 
 #include "rk_venc_ref.h"
 
-#define REF_MODE_IS_GLOBAL(mode)    ((mode >= REF_MODE_GLOBAL) && (mode < REF_MODE_GLOBAL_BUTT))
+#define REF_MODE_IS_GLOBAL(mode)    ((mode >= REF_TO_PREV_REF_FRM) && (mode < REF_MODE_GLOBAL_BUTT))
 #define REF_MODE_IS_LT_MODE(mode)   ((mode > REF_MODE_LT) && (mode < REF_MODE_LT_BUTT))
 #define REF_MODE_IS_ST_MODE(mode)   ((mode > REF_MODE_ST) && (mode < REF_MODE_ST_BUTT))
 
@@ -68,4 +68,4 @@ MPP_RET _check_is_mpp_enc_ref_cfg(const char *func, void *ref);
 }
 #endif
 
-#endif /*__MPP_ENC_REF_H__*/
+#endif /* MPP_ENC_REF_H */

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __AV1_H__
-#define __AV1_H__
+#ifndef AV1_H
+#define AV1_H
 
 // OBU types (section 6.2.2).
 typedef enum {
@@ -39,14 +39,6 @@ enum {
     AV1_METADATA_TYPE_SCALABILITY = 3,
     AV1_METADATA_TYPE_ITUT_T35    = 4,
     AV1_METADATA_TYPE_TIMECODE    = 5,
-};
-
-// Frame types (section 6.8.2).
-enum {
-    AV1_FRAME_KEY        = 0,
-    AV1_FRAME_INTER      = 1,
-    AV1_FRAME_INTRA_ONLY = 2,
-    AV1_FRAME_SWITCH     = 3,
 };
 
 // Reference frames (section 6.10.24).
@@ -160,17 +152,9 @@ enum {
     AV1_SCALABILITY_L4T7_KEY_SHIFT = 28,
 };
 
-// Frame Restoration types (section 6.10.15)
-enum {
-    AV1_RESTORE_NONE       = 0,
-    AV1_RESTORE_WIENER     = 1,
-    AV1_RESTORE_SGRPROJ    = 2,
-    AV1_RESTORE_SWITCHABLE = 3,
-};
-
 #define PROFILE_AV1_MAIN                         0
 #define PROFILE_AV1_HIGH                         1
 #define PROFILE_AV1_PROFESSIONAL                 2
 #define AV1_MAX_TILES     128
 
-#endif /*__AV1_H__ */
+#endif /* AV1_H */

@@ -1,28 +1,20 @@
 /*
+ * Copyright (C) 2015 The FFmpeg project
+ * Copyright (c) 2015 Rockchip Electronics Co., Ltd.
  *
- * Copyright 2015 Rockchip Electronics Co. LTD
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/*
- * @file       h265d_parser.c
- * @brief
- * @author      csy(csy@rock-chips.com)
-
- * @version     1.0.0
- * @history
- *   2015.7.15 : Create
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #define MODULE_TAG "H265D_PARSER"
@@ -1554,6 +1546,27 @@ RK_S32 mpp_hevc_extract_rbsp(HEVCContext *s, const RK_U8 *src, int length,
                              HEVCNAL *nal)
 {
     RK_S32 i;
+    RK_S32 rbsp_buf_min_size = length + MPP_INPUT_BUFFER_PADDING_SIZE;
+    RK_U32 cur_nalu_type = src[0] >> 1;
+    RK_U32 b_first_slice_in_pic = ((src[2] & (1 << 7)) >> 7);
+
+    //skip extract rbsp for cap_hw_h265_rps
+    if (s->cap_hw_h265_rps && cur_nalu_type < NAL_VPS && b_first_slice_in_pic) {
+        if (rbsp_buf_min_size > nal->rbsp_buffer_size) {
+            mpp_free(nal->rbsp_buffer);
+            nal->rbsp_buffer = NULL;
+            nal->rbsp_buffer = mpp_malloc(RK_U8, rbsp_buf_min_size);
+            nal->rbsp_buffer_size = nal->rbsp_buffer == NULL ? 0 : rbsp_buf_min_size;
+        }
+        if (nal->rbsp_buffer) {
+            memcpy(nal->rbsp_buffer, src, length);
+            nal->data = nal->rbsp_buffer;
+            nal->size = length;
+        } else {
+            mpp_err_f("malloc nal rbsp buffer failed, size %d\n", rbsp_buf_min_size);
+        }
+        return length;
+    }
 
     s->skipped_bytes = 0;
 
@@ -1592,16 +1605,12 @@ RK_S32 mpp_hevc_extract_rbsp(HEVCContext *s, const RK_U8 *src, int length,
     }
 #endif
 
-    if (length + MPP_INPUT_BUFFER_PADDING_SIZE > nal->rbsp_buffer_size) {
-        RK_S32 min_size = length + MPP_INPUT_BUFFER_PADDING_SIZE;
+    if (rbsp_buf_min_size > nal->rbsp_buffer_size) {
+        rbsp_buf_min_size = MPP_MAX(17 * rbsp_buf_min_size / 16 + 32, rbsp_buf_min_size);
         mpp_free(nal->rbsp_buffer);
         nal->rbsp_buffer = NULL;
-        min_size = MPP_MAX(17 * min_size / 16 + 32, min_size);
-        nal->rbsp_buffer = mpp_malloc(RK_U8, min_size);
-        if (nal->rbsp_buffer == NULL) {
-            min_size = 0;
-        }
-        nal->rbsp_buffer_size = min_size;
+        nal->rbsp_buffer = mpp_malloc(RK_U8, rbsp_buf_min_size);
+        nal->rbsp_buffer_size = nal->rbsp_buffer == NULL ? 0 : rbsp_buf_min_size;
     }
 
     memcpy(nal->rbsp_buffer, src, length);
@@ -1615,6 +1624,7 @@ RK_S32 mpp_hevc_extract_rbsp(HEVCContext *s, const RK_U8 *src, int length,
 static RK_S32 split_nal_units(HEVCContext *s, RK_U8 *buf, RK_U32 length)
 {
     RK_S32 i, consumed;
+    RK_U32 total_consumed = 0;
     MPP_RET ret = MPP_OK;
     s->nb_nals = 0;
     while (length >= 4) {
@@ -1626,6 +1636,7 @@ static RK_S32 split_nal_units(HEVCContext *s, RK_U8 *buf, RK_U32 length)
                 extract_length = (extract_length << 8) | buf[i];
             buf    += s->nal_length_size;
             length -= s->nal_length_size;
+            total_consumed += s->nal_length_size;
 
             if ((RK_U32)extract_length > length) {
                 mpp_err( "Invalid NAL unit size.\n");
@@ -1729,7 +1740,35 @@ static RK_S32 split_nal_units(HEVCContext *s, RK_U8 *buf, RK_U32 length)
 
         buf    += consumed;
         length -= consumed;
+        total_consumed += consumed;
+
+        if (s->is_nalff && s->nb_nals > 0 && length >= s->nal_length_size + 3) {
+            RK_S32 next_nal_length = 0;
+
+            for (i = 0; i < s->nal_length_size; i++)
+                next_nal_length = (next_nal_length << 8) | buf[i];
+
+            if (next_nal_length >= 3 && (RK_U32)(s->nal_length_size + next_nal_length) <= length) {
+                const RK_U8 *next_nal_header = buf + s->nal_length_size;
+                RK_U8 next_nal_unit_type = (next_nal_header[0] >> 1) & 0x3F;
+                RK_U8 next_first_slice_flag = next_nal_header[2] >> 7;
+
+                if (next_nal_unit_type <= NAL_RASL_R ||
+                    (next_nal_unit_type >= NAL_BLA_W_LP && next_nal_unit_type <= NAL_CRA_NUT)) {
+                    if (next_first_slice_flag) {
+                        h265d_dbg(H265D_DBG_FUNCTION,
+                                  "Detected NEXT frame: NAL type=%d, first_slice=1, "
+                                  "stopping at NAL #%d (already parsed %d NALs)\n",
+                                  next_nal_unit_type, s->nb_nals, s->nb_nals);
+                        break;
+                    }
+                }
+            }
+        }
     }
+
+    s->consumed_bytes = total_consumed;
+
 fail:
 
     return (s->nb_nals) ? MPP_OK : ret;
@@ -2017,6 +2056,11 @@ MPP_RET h265d_prepare(void *ctx, MppPacket pkt, HalDecTask *task)
     ret = (MPP_RET)split_nal_units(s, buf, length);
 
     if (MPP_OK == ret) {
+        if (s->is_nalff) {
+            pos = buf + s->consumed_bytes;
+            mpp_packet_set_pos(pkt, pos);
+        }
+
         if (MPP_OK == h265d_syntax_fill_slice(s->h265dctx, task->input)) {
             task->valid = 1;
             task->input_packet = s->input_packet;
@@ -2278,6 +2322,8 @@ MPP_RET h265d_init(void *ctx, ParserCfg *parser_cfg)
     s->sps_pool = mpp_mem_pool_init_f("h265d_sps", sizeof(HEVCSPS));
 
     mpp_slots_set_prop(s->slots, SLOTS_WIDTH_ALIGN, rkv_ctu_64_align);
+
+    s->cap_hw_h265_rps = s->h265dctx->hw_info->cap_hw_h265_rps;
 
 #ifdef dump
     fp = fopen("/data/dump1.bin", "wb+");

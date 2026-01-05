@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_MV2D_VPU1_H__
-#define __HAL_MV2D_VPU1_H__
+#ifndef HAL_MV2D_VPU1_H
+#define HAL_MV2D_VPU1_H
 
 #include "mpp_hal.h"
 
@@ -23,14 +23,10 @@
 extern "C" {
 #endif
 
-MPP_RET hal_m2vd_vdpu1_init    (void *hal, MppHalCfg *cfg);
-MPP_RET hal_m2vd_vdpu1_deinit  (void *hal);
-MPP_RET hal_m2vd_vdpu1_gen_regs(void *hal, HalTaskInfo *task);
-MPP_RET hal_m2vd_vdpu1_start   (void *hal, HalTaskInfo *task);
-MPP_RET hal_m2vd_vdpu1_wait    (void *hal, HalTaskInfo *task);
+extern const MppHalApi hal_m2vd_vdpu1;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /*__HAL_MV2D_VPU1_H__*/
+#endif /* HAL_MV2D_VPU1_H */

@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef __JPEGD_SYNTAX__
-#define __JPEGD_SYNTAX__
+#ifndef JPEGD_SYNTAX_H
+#define JPEGD_SYNTAX_H
 
 #include "mpp_frame.h"
 
@@ -54,8 +54,8 @@
 
 extern RK_U32 jpegd_debug;
 
-#define jpegd_dbg(flag, fmt, ...)         _mpp_dbg(jpegd_debug, flag, fmt, ## __VA_ARGS__)
-#define jpegd_dbg_f(flag, fmt, ...)       _mpp_dbg_f(jpegd_debug, flag, fmt, ## __VA_ARGS__)
+#define jpegd_dbg(flag, fmt, ...)         mpp_dbg(jpegd_debug, flag, fmt, ## __VA_ARGS__)
+#define jpegd_dbg_f(flag, fmt, ...)       mpp_dbg_f(jpegd_debug, flag, fmt, ## __VA_ARGS__)
 
 #define jpegd_dbg_func(fmt, ...)          jpegd_dbg_f(JPEGD_DBG_FUNCTION, fmt, ## __VA_ARGS__)
 #define jpegd_dbg_marker(fmt, ...)        jpegd_dbg(JPEGD_DBG_STARTCODE, fmt, ## __VA_ARGS__)
@@ -190,4 +190,4 @@ typedef struct JpegdSyntax {
     RK_U8          htbl_entry;
 } JpegdSyntax;
 
-#endif /*__JPEGD_SYNTAX__*/
+#endif /* JPEGD_SYNTAX_H */

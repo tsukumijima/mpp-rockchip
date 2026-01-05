@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __MPP_META_IMPL_H__
-#define __MPP_META_IMPL_H__
+#ifndef MPP_META_IMPL_H
+#define MPP_META_IMPL_H
 
 #include "mpp_common.h"
 
@@ -47,14 +47,13 @@ typedef struct MppMetaImpl_t {
     MppEncUserData      user_data;
     MppEncUserDataSet   user_data_set;
     RK_U32              datas_buf_size;
-    MppMetaVal          vals[];
+    MppMetaVal          vals[0];
 } MppMetaImpl;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-RK_S32 mpp_meta_size(MppMeta meta);
 MPP_RET mpp_meta_dump(MppMeta meta);
 MPP_RET mpp_meta_inc_ref(MppMeta meta);
 
@@ -67,4 +66,4 @@ extern RK_S32 meta_hdr_size_index;
 }
 #endif
 
-#endif /*__MPP_META_IMPL_H__*/
+#endif /* MPP_META_IMPL_H */

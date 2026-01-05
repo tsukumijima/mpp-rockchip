@@ -15,12 +15,10 @@
  * limitations under the License.
  */
 
-#ifndef __HAL_H265D_RKV_H__
-#define __HAL_H265D_RKV_H__
+#ifndef HAL_H265D_RKV_H
+#define HAL_H265D_RKV_H
 
 #include "mpp_hal.h"
-
-#define HWID_VDPU345    (0xdbdc0701)
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,4 +30,4 @@ extern const MppHalApi hal_h265d_rkv;
 }
 #endif
 
-#endif /*__HAL_H265D_RKV_H__*/
+#endif /* HAL_H265D_RKV_H */

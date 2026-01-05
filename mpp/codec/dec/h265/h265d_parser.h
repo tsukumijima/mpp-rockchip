@@ -26,8 +26,8 @@
  */
 
 
-#ifndef __H265D_PARSER_H__
-#define __H265D_PARSER_H__
+#ifndef H265D_PARSER_H
+#define H265D_PARSER_H
 
 #include <limits.h>
 #include <string.h>
@@ -55,7 +55,7 @@ extern RK_U32 h265d_debug;
 #define H265D_DBG_TIME              (0x00000100)
 
 
-#define h265d_dbg(flag, fmt, ...) _mpp_dbg(h265d_debug, flag, fmt, ## __VA_ARGS__)
+#define h265d_dbg(flag, fmt, ...) mpp_dbg(h265d_debug, flag, fmt, ## __VA_ARGS__)
 
 #define MAX_FRAME_SIZE 2048000
 
@@ -663,6 +663,8 @@ typedef struct HEVCContext {
 
     RK_U32  deny_flag;
     RecoveryPoint recovery;
+    RK_U32  cap_hw_h265_rps;
+    RK_U32  consumed_bytes;
 } HEVCContext;
 
 RK_S32 mpp_hevc_decode_short_term_rps(HEVCContext *s, ShortTermRPS *rps,
@@ -718,4 +720,4 @@ void mpp_hevc_pps_free(RK_U8 *data);
 
 void mpp_hevc_fill_dynamic_meta(HEVCContext *s, const RK_U8 *data, RK_U32 size, RK_U32 hdr_fmt);
 
-#endif /* __H265D_PAESER_H__ */
+#endif /* H265D_PAESER_H */

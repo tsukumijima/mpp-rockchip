@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __RC_DEBUG_H__
-#define __RC_DEBUG_H__
+#ifndef RC_DEBUG_H
+#define RC_DEBUG_H
 
 #include "mpp_debug.h"
 
@@ -30,8 +30,8 @@
 #define RC_DBG_RECORD               (0x00001000)
 #define RC_DBG_VBV                  (0x00002000)
 
-#define rc_dbg(flag, fmt, ...)      _mpp_dbg(rc_debug, flag, fmt, ## __VA_ARGS__)
-#define rc_dbg_f(flag, fmt, ...)    _mpp_dbg_f(rc_debug, flag, fmt, ## __VA_ARGS__)
+#define rc_dbg(flag, fmt, ...)      mpp_dbg(rc_debug, flag, fmt, ## __VA_ARGS__)
+#define rc_dbg_f(flag, fmt, ...)    mpp_dbg_f(rc_debug, flag, fmt, ## __VA_ARGS__)
 
 #define rc_dbg_func(fmt, ...)       rc_dbg_f(RC_DBG_FUNCTION, fmt, ## __VA_ARGS__)
 #define rc_dbg_impl(fmt, ...)       rc_dbg(RC_DBG_API_IMPL, fmt, ## __VA_ARGS__)
@@ -46,4 +46,4 @@
 
 extern RK_U32 rc_debug;
 
-#endif /* __RC_DEBUG_H__ */
+#endif /* RC_DEBUG_H */

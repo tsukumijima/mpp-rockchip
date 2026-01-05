@@ -3,8 +3,8 @@
  * Copyright (c) 2015 Rockchip Electronics Co., Ltd.
  */
 
-#ifndef __MPP_COMMON_H__
-#define __MPP_COMMON_H__
+#ifndef MPP_COMMON_H
+#define MPP_COMMON_H
 
 #include "rk_type.h"
 
@@ -32,6 +32,9 @@
 #define MPP_ALIGN_DOWN(x, a)    ((x)&~((a)-1))
 #define MPP_ALIGN_GEN(x, a)     (((x)+(a)-1)/(a)*(a))
 #define MPP_VSWAP(a, b)         { a ^= b; b ^= a; a ^= b; }
+
+#define MPP_ROUNDUP(N, M)       MPP_ALIGN(M, N)
+#define MPP_DIVUP(N, M)         (MPP_ROUNDUP(N, M) / N)
 
 #define MPP_GENMASK(h, l) (((1ULL << ((h) + 1)) - 1) & ~((1ULL << (l)) - 1))
 
@@ -189,7 +192,7 @@ RK_S32 mpp_log2_16bit(RK_U32 v);
 
 static __inline RK_S32 mpp_ceil_log2(RK_S32 x)
 {
-    return mpp_log2((x - 1) << 1);
+    return mpp_log2(((RK_U32)x - 1U) << 1);
 }
 
 static __inline RK_S32 mpp_clip(RK_S32 a, RK_S32 amin, RK_S32 amax)
@@ -197,11 +200,6 @@ static __inline RK_S32 mpp_clip(RK_S32 a, RK_S32 amin, RK_S32 amax)
     if      (a < amin) return amin;
     else if (a > amax) return amax;
     else               return a;
-}
-
-static __inline RK_U32 mpp_is_32bit()
-{
-    return ((sizeof(void *) == 4) ? (1) : (0));
 }
 
 static __inline RK_S32 mpp_dup(RK_S32 fd)
@@ -224,15 +222,19 @@ static __inline RK_S32 mpp_dup(RK_S32 fd)
 }
 
 RK_S32 axb_div_c(RK_S32 a, RK_S32 b, RK_S32 c);
+RK_U32 mpp_align_8(RK_U32 val);
 RK_U32 mpp_align_16(RK_U32 val);
 RK_U32 mpp_align_64(RK_U32 val);
 RK_U32 mpp_align_128(RK_U32 val);
 RK_U32 mpp_align_256_odd(RK_U32 val);
 RK_U32 mpp_align_128_odd_plus_64(RK_U32 val);
+RK_U32 mpp_align_wxh2yuv420(RK_U32 val);
+RK_U32 mpp_align_wxh2yuv422(RK_U32 val);
+RK_U32 mpp_align_wxh2yuv444(RK_U32 val);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /*__MPP_COMMON_H__*/
+#endif /* MPP_COMMON_H */
 

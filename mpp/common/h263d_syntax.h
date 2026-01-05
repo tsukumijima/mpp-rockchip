@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef __H263D_SYNTAX__
-#define __H263D_SYNTAX__
+#ifndef H263D_SYNTAX_H
+#define H263D_SYNTAX_H
 
 #include "dxva_syntax.h"
 
@@ -28,7 +28,7 @@ typedef enum {
 } H263VOPType;
 
 /* H263PT2 Picture Parameter structure */
-typedef struct _DXVA_PicParams_H263 {
+typedef struct DXVA_PicParams_H263_t {
     RK_U8   short_video_header;
     RK_U8   vop_coding_type;
     RK_U8   vop_quant;
@@ -95,4 +95,4 @@ typedef struct h263d_dxva2_picture_context {
     DXVA2_DecodeBufferDesc      desc[2];
 } h263d_dxva2_picture_context_t;
 
-#endif /*__H263D_SYNTAX__*/
+#endif /* H263D_SYNTAX_H */

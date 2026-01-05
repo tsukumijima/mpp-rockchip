@@ -1,18 +1,22 @@
 /*
- * Copyright 2021 Rockchip Electronics Co. LTD
+ * Copyright (C) 2021 The FFmpeg project
+ * Copyright (c) 2021 Rockchip Electronics Co., Ltd.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
+
 #define MODULE_TAG "av1d_cbs"
 
 #include <string.h>
@@ -327,7 +331,7 @@ __bitread_error:
         xf(width, name, current->name, 0, MAX_UINT_BITS(width), 0, )
 #define fc(width, name, range_min, range_max) \
         xf(width, name, current->name, range_min, range_max, 0, )
-#define flag(name) fb(1, name)
+#define av1d_flag(name) fb(1, name)
 #define su(width, name) \
         xsu(width, name, current->name, 0, )
 
@@ -335,7 +339,7 @@ __bitread_error:
         xf(width, name, current->name, 0, MAX_UINT_BITS(width), subs, __VA_ARGS__)
 #define fcs(width, name, range_min, range_max, subs, ...) \
         xf(width, name, current->name, range_min, range_max, subs, __VA_ARGS__)
-#define flags(name, subs, ...) \
+#define av1d_flags(name, subs, ...) \
         xf(1, name, current->name, 0, 1, subs, __VA_ARGS__)
 #define sus(width, name, subs, ...) \
         xsu(width, name, current->name, subs, __VA_ARGS__)
@@ -414,8 +418,8 @@ static RK_S32 mpp_av1_read_obu_header(AV1Context *ctx, BitReadCtx_t *gb,
     fc(1, obu_forbidden_bit, 0, 0);
 
     fc(4, obu_type, 0, AV1_OBU_PADDING);
-    flag(obu_extension_flag);
-    flag(obu_has_size_field);
+    av1d_flag(obu_extension_flag);
+    av1d_flag(obu_has_size_field);
 
     fc(1, obu_reserved_1bit, 0, 0);
 
@@ -470,11 +474,11 @@ static RK_S32 mpp_av1_color_config(AV1Context *ctx, BitReadCtx_t *gb,
 {
     RK_S32 err;
 
-    flag(high_bitdepth);
+    av1d_flag(high_bitdepth);
 
     if (seq_profile == PROFILE_AV1_PROFESSIONAL &&
         current->high_bitdepth) {
-        flag(twelve_bit);
+        av1d_flag(twelve_bit);
         ctx->bit_depth = current->twelve_bit ? 12 : 10;
     } else {
         ctx->bit_depth = current->high_bitdepth ? 10 : 8;
@@ -483,10 +487,10 @@ static RK_S32 mpp_av1_color_config(AV1Context *ctx, BitReadCtx_t *gb,
     if (seq_profile == PROFILE_AV1_HIGH)
         infer(mono_chrome, 0);
     else
-        flag(mono_chrome);
+        av1d_flag(mono_chrome);
     ctx->num_planes = current->mono_chrome ? 1 : 3;
 
-    flag(color_description_present_flag);
+    av1d_flag(color_description_present_flag);
     if (current->color_description_present_flag) {
         fb(8, color_primaries);
         fb(8, transfer_characteristics);
@@ -501,7 +505,7 @@ static RK_S32 mpp_av1_color_config(AV1Context *ctx, BitReadCtx_t *gb,
     }
 
     if (current->mono_chrome) {
-        flag(color_range);
+        av1d_flag(color_range);
 
         infer(subsampling_x, 1);
         infer(subsampling_y, 1);
@@ -514,10 +518,10 @@ static RK_S32 mpp_av1_color_config(AV1Context *ctx, BitReadCtx_t *gb,
         infer(color_range,   1);
         infer(subsampling_x, 0);
         infer(subsampling_y, 0);
-        flag(separate_uv_delta_q);
+        av1d_flag(separate_uv_delta_q);
 
     } else {
-        flag(color_range);
+        av1d_flag(color_range);
 
         if (seq_profile == PROFILE_AV1_MAIN) {
             infer(subsampling_x, 1);
@@ -542,7 +546,7 @@ static RK_S32 mpp_av1_color_config(AV1Context *ctx, BitReadCtx_t *gb,
                AV1_CSP_COLOCATED);
         }
 
-        flag(separate_uv_delta_q);
+        av1d_flag(separate_uv_delta_q);
     }
 
     return 0;
@@ -557,7 +561,7 @@ static RK_S32 mpp_av1_timing_info(AV1Context *ctx, BitReadCtx_t *gb,
     fc(32, num_units_in_display_tick, 1, MAX_UINT_BITS(32));
     fc(32, time_scale,                1, MAX_UINT_BITS(32));
 
-    flag(equal_picture_interval);
+    av1d_flag(equal_picture_interval);
     if (current->equal_picture_interval)
         uvlc(num_ticks_per_picture_minus_1, 0, MAX_UINT_BITS(32) - 1);
 
@@ -584,8 +588,8 @@ static RK_S32 mpp_av1_sequence_header_obu(AV1Context *ctx, BitReadCtx_t *gb,
 
     fc(3, seq_profile, PROFILE_AV1_MAIN,
        PROFILE_AV1_PROFESSIONAL);
-    flag(still_picture);
-    flag(reduced_still_picture_header);
+    av1d_flag(still_picture);
+    av1d_flag(reduced_still_picture_header);
 
     if (current->reduced_still_picture_header) {
         infer(timing_info_present_flag,           0);
@@ -601,11 +605,11 @@ static RK_S32 mpp_av1_sequence_header_obu(AV1Context *ctx, BitReadCtx_t *gb,
         infer(initial_display_delay_present_for_this_op[0], 0);
 
     } else {
-        flag(timing_info_present_flag);
+        av1d_flag(timing_info_present_flag);
         if (current->timing_info_present_flag) {
             CHECK(mpp_av1_timing_info(ctx, gb, &current->timing_info));
 
-            flag(decoder_model_info_present_flag);
+            av1d_flag(decoder_model_info_present_flag);
             if (current->decoder_model_info_present_flag) {
                 CHECK(mpp_av1_decoder_model_info
                       (ctx, gb, &current->decoder_model_info));
@@ -614,7 +618,7 @@ static RK_S32 mpp_av1_sequence_header_obu(AV1Context *ctx, BitReadCtx_t *gb,
             infer(decoder_model_info_present_flag, 0);
         }
 
-        flag(initial_display_delay_present_flag);
+        av1d_flag(initial_display_delay_present_flag);
 
         fb(5, operating_points_cnt_minus_1);
         for (i = 0; i <= current->operating_points_cnt_minus_1; i++) {
@@ -622,24 +626,24 @@ static RK_S32 mpp_av1_sequence_header_obu(AV1Context *ctx, BitReadCtx_t *gb,
             fbs(5,  seq_level_idx[i], 1, i);
 
             if (current->seq_level_idx[i] > 7)
-                flags(seq_tier[i], 1, i);
+                av1d_flags(seq_tier[i], 1, i);
             else
                 infer(seq_tier[i], 0);
 
             if (current->decoder_model_info_present_flag) {
-                flags(decoder_model_present_for_this_op[i], 1, i);
+                av1d_flags(decoder_model_present_for_this_op[i], 1, i);
                 if (current->decoder_model_present_for_this_op[i]) {
                     RK_S32 n = current->decoder_model_info.buffer_delay_length_minus_1 + 1;
                     fbs(n, decoder_buffer_delay[i], 1, i);
                     fbs(n, encoder_buffer_delay[i], 1, i);
-                    flags(low_delay_mode_flag[i], 1, i);
+                    av1d_flags(low_delay_mode_flag[i], 1, i);
                 }
             } else {
                 infer(decoder_model_present_for_this_op[i], 0);
             }
 
             if (current->initial_display_delay_present_flag) {
-                flags(initial_display_delay_present_for_this_op[i], 1, i);
+                av1d_flags(initial_display_delay_present_for_this_op[i], 1, i);
                 if (current->initial_display_delay_present_for_this_op[i])
                     fbs(4, initial_display_delay_minus_1[i], 1, i);
             }
@@ -655,15 +659,15 @@ static RK_S32 mpp_av1_sequence_header_obu(AV1Context *ctx, BitReadCtx_t *gb,
     if (current->reduced_still_picture_header)
         infer(frame_id_numbers_present_flag, 0);
     else
-        flag(frame_id_numbers_present_flag);
+        av1d_flag(frame_id_numbers_present_flag);
     if (current->frame_id_numbers_present_flag) {
         fb(4, delta_frame_id_length_minus_2);
         fb(3, additional_frame_id_length_minus_1);
     }
 
-    flag(use_128x128_superblock);
-    flag(enable_filter_intra);
-    flag(enable_intra_edge_filter);
+    av1d_flag(use_128x128_superblock);
+    av1d_flag(enable_filter_intra);
+    av1d_flag(enable_intra_edge_filter);
 
     if (current->reduced_still_picture_header) {
         infer(enable_interintra_compound, 0);
@@ -679,28 +683,28 @@ static RK_S32 mpp_av1_sequence_header_obu(AV1Context *ctx, BitReadCtx_t *gb,
         infer(seq_force_integer_mv,
               AV1_SELECT_INTEGER_MV);
     } else {
-        flag(enable_interintra_compound);
-        flag(enable_masked_compound);
-        flag(enable_warped_motion);
-        flag(enable_dual_filter);
+        av1d_flag(enable_interintra_compound);
+        av1d_flag(enable_masked_compound);
+        av1d_flag(enable_warped_motion);
+        av1d_flag(enable_dual_filter);
 
-        flag(enable_order_hint);
+        av1d_flag(enable_order_hint);
         if (current->enable_order_hint) {
-            flag(enable_jnt_comp);
-            flag(enable_ref_frame_mvs);
+            av1d_flag(enable_jnt_comp);
+            av1d_flag(enable_ref_frame_mvs);
         } else {
             infer(enable_jnt_comp,      0);
             infer(enable_ref_frame_mvs, 0);
         }
 
-        flag(seq_choose_screen_content_tools);
+        av1d_flag(seq_choose_screen_content_tools);
         if (current->seq_choose_screen_content_tools)
             infer(seq_force_screen_content_tools,
                   AV1_SELECT_SCREEN_CONTENT_TOOLS);
         else
             fb(1, seq_force_screen_content_tools);
         if (current->seq_force_screen_content_tools > 0) {
-            flag(seq_choose_integer_mv);
+            av1d_flag(seq_choose_integer_mv);
             if (current->seq_choose_integer_mv)
                 infer(seq_force_integer_mv,
                       AV1_SELECT_INTEGER_MV);
@@ -714,14 +718,14 @@ static RK_S32 mpp_av1_sequence_header_obu(AV1Context *ctx, BitReadCtx_t *gb,
             fb(3, order_hint_bits_minus_1);
     }
 
-    flag(enable_superres);
-    flag(enable_cdef);
-    flag(enable_restoration);
+    av1d_flag(enable_superres);
+    av1d_flag(enable_cdef);
+    av1d_flag(enable_restoration);
 
     CHECK(mpp_av1_color_config(ctx, gb, &current->color_config,
                                current->seq_profile));
 
-    flag(film_grain_params_present);
+    av1d_flag(film_grain_params_present);
 
     return 0;
 }
@@ -885,7 +889,7 @@ static RK_S32 mpp_av1_superres_params(AV1Context *ctx, BitReadCtx_t *gb,
     RK_S32 denom, err;
 
     if (seq->enable_superres)
-        flag(use_superres);
+        av1d_flag(use_superres);
     else
         infer(use_superres, 0);
 
@@ -929,7 +933,7 @@ static RK_S32 mpp_av1_render_size(AV1Context *ctx, BitReadCtx_t *gb,
 {
     RK_S32 err;
 
-    flag(render_and_frame_size_different);
+    av1d_flag(render_and_frame_size_different);
 
     if (current->render_and_frame_size_different) {
         fb(16, render_width_minus_1);
@@ -951,7 +955,7 @@ static RK_S32 mpp_av1_frame_size_with_refs(AV1Context *ctx, BitReadCtx_t *gb,
     RK_S32 i, err;
 
     for (i = 0; i < AV1_REFS_PER_FRAME; i++) {
-        flags(found_ref[i], 1, i);
+        av1d_flags(found_ref[i], 1, i);
         if (current->found_ref[i]) {
             AV1ReferenceFrameState *ref =
                 &ctx->ref_s[current->ref_frame_idx[i]];
@@ -992,7 +996,7 @@ static RK_S32  mpp_av1_interpolation_filter(AV1Context *ctx, BitReadCtx_t *gb,
 {
     RK_S32 err;
     (void)ctx;
-    flag(is_filter_switchable);
+    av1d_flag(is_filter_switchable);
     if (current->is_filter_switchable)
         infer(interpolation_filter,
               AV1_INTERPOLATION_FILTER_SWITCHABLE);
@@ -1032,7 +1036,7 @@ static RK_S32 mpp_av1_tile_info(AV1Context *ctx, BitReadCtx_t *gb,
     min_log2_tiles = MPP_MAX(min_log2_tile_cols,
                              mpp_av1_tile_log2(max_tile_area_sb, sb_rows * sb_cols));
 
-    flag(uniform_tile_spacing_flag);
+    av1d_flag(uniform_tile_spacing_flag);
 
     if (current->uniform_tile_spacing_flag) {
         RK_S32 tile_width_sb, tile_height_sb;
@@ -1122,7 +1126,7 @@ static RK_S32 mpp_av1_quantization_params(AV1Context *ctx, BitReadCtx_t *gb,
 
     if (ctx->num_planes > 1) {
         if (seq->color_config.separate_uv_delta_q)
-            flag(diff_uv_delta);
+            av1d_flag(diff_uv_delta);
         else
             infer(diff_uv_delta, 0);
 
@@ -1143,7 +1147,7 @@ static RK_S32 mpp_av1_quantization_params(AV1Context *ctx, BitReadCtx_t *gb,
         infer(delta_q_v_ac, 0);
     }
 
-    flag(using_qmatrix);
+    av1d_flag(using_qmatrix);
     if (current->using_qmatrix) {
         fb(4, qm_y);
         fb(4, qm_u);
@@ -1165,7 +1169,7 @@ static RK_S32 mpp_av1_segmentation_params(AV1Context *ctx, BitReadCtx_t *gb,
     static const RK_S16 default_feature_value[AV1_SEG_LVL_MAX] = { 0 };
     RK_S32 i, j, err;
 
-    flag(segmentation_enabled);
+    av1d_flag(segmentation_enabled);
 
     if (current->segmentation_enabled) {
         if (current->primary_ref_frame == AV1_PRIMARY_REF_NONE) {
@@ -1173,12 +1177,12 @@ static RK_S32 mpp_av1_segmentation_params(AV1Context *ctx, BitReadCtx_t *gb,
             infer(segmentation_temporal_update, 0);
             infer(segmentation_update_data,     1);
         } else {
-            flag(segmentation_update_map);
+            av1d_flag(segmentation_update_map);
             if (current->segmentation_update_map)
-                flag(segmentation_temporal_update);
+                av1d_flag(segmentation_temporal_update);
             else
                 infer(segmentation_temporal_update, 0);
-            flag(segmentation_update_data);
+            av1d_flag(segmentation_update_data);
         }
 
         for (i = 0; i < AV1_MAX_SEGMENTS; i++) {
@@ -1197,7 +1201,7 @@ static RK_S32 mpp_av1_segmentation_params(AV1Context *ctx, BitReadCtx_t *gb,
 
             for (j = 0; j < AV1_SEG_LVL_MAX; j++) {
                 if (current->segmentation_update_data) {
-                    flags(feature_enabled[i][j], 2, i, j);
+                    av1d_flags(feature_enabled[i][j], 2, i, j);
                     if (current->feature_enabled[i][j] && bits[j] > 0) {
                         if (sign[j]) {
                             RK_S32 sign_, data;
@@ -1249,7 +1253,7 @@ static RK_S32 mpp_av1_delta_q_params(AV1Context *ctx, BitReadCtx_t *gb,
     RK_S32 err;
     (void)ctx;
     if (current->base_q_idx > 0)
-        flag(delta_q_present);
+        av1d_flag(delta_q_present);
     else
         infer(delta_q_present, 0);
 
@@ -1266,12 +1270,12 @@ static RK_S32 mpp_av1_delta_lf_params(AV1Context *ctx, BitReadCtx_t *gb,
     (void)ctx;
     if (current->delta_q_present) {
         if (!current->allow_intrabc)
-            flag(delta_lf_present);
+            av1d_flag(delta_lf_present);
         else
             infer(delta_lf_present, 0);
         if (current->delta_lf_present) {
             fb(2, delta_lf_res);
-            flag(delta_lf_multi);
+            av1d_flag(delta_lf_multi);
         } else {
             infer(delta_lf_res,   0);
             infer(delta_lf_multi, 0);
@@ -1326,7 +1330,7 @@ static RK_S32 mpp_av1_loop_filter_params(AV1Context *ctx, BitReadCtx_t *gb,
              current->loop_filter_level[2], current->loop_filter_level[3]);
     fb(3, loop_filter_sharpness);
 
-    flag(loop_filter_delta_enabled);
+    av1d_flag(loop_filter_delta_enabled);
     if (current->loop_filter_delta_enabled) {
         const RK_S8 *ref_loop_filter_ref_deltas, *ref_loop_filter_mode_deltas;
 
@@ -1340,10 +1344,10 @@ static RK_S32 mpp_av1_loop_filter_params(AV1Context *ctx, BitReadCtx_t *gb,
                 ctx->ref_s[current->ref_frame_idx[current->primary_ref_frame]].loop_filter_mode_deltas;
         }
 
-        flag(loop_filter_delta_update);
+        av1d_flag(loop_filter_delta_update);
         for (i = 0; i < AV1_TOTAL_REFS_PER_FRAME; i++) {
             if (current->loop_filter_delta_update)
-                flags(update_ref_delta[i], 1, i);
+                av1d_flags(update_ref_delta[i], 1, i);
             else
                 infer(update_ref_delta[i], 0);
             if (current->update_ref_delta[i])
@@ -1353,7 +1357,7 @@ static RK_S32 mpp_av1_loop_filter_params(AV1Context *ctx, BitReadCtx_t *gb,
         }
         for (i = 0; i < 2; i++) {
             if (current->loop_filter_delta_update)
-                flags(update_mode_delta[i], 1, i);
+                av1d_flags(update_mode_delta[i], 1, i);
             else
                 infer(update_mode_delta[i], 0);
             if (current->update_mode_delta[i])
@@ -1452,7 +1456,7 @@ static RK_S32 mpp_av1_read_tx_mode(AV1Context *ctx, BitReadCtx_t *gb,
     if (ctx->coded_lossless)
         infer(tx_mode, 0);
     else {
-        flag(tx_mode);
+        av1d_flag(tx_mode);
         current->tx_mode = current->tx_mode ? TX_MODE_SELECT : TX_MODE_LARGEST;
     }
 
@@ -1468,7 +1472,7 @@ static RK_S32 mpp_av1_frame_reference_mode(AV1Context *ctx, BitReadCtx_t *gb,
         current->frame_type == AV1_FRAME_KEY)
         infer(reference_select, 0);
     else
-        flag(reference_select);
+        av1d_flag(reference_select);
 
     return 0;
 }
@@ -1553,7 +1557,7 @@ static RK_S32 mpp_av1_skip_mode_params(AV1Context *ctx, BitReadCtx_t *gb,
     }
 
     if (skip_mode_allowed)
-        flag(skip_mode_present);
+        av1d_flag(skip_mode_present);
     else
         infer(skip_mode_present, 0);
 
@@ -1604,13 +1608,13 @@ static RK_S32 mpp_av1_global_motion_params(AV1Context *ctx, BitReadCtx_t *gb,
         return 0;
 
     for (ref = AV1_REF_FRAME_LAST; ref <= AV1_REF_FRAME_ALTREF; ref++) {
-        flags(is_global[ref], 1, ref);
+        av1d_flags(is_global[ref], 1, ref);
         if (current->is_global[ref]) {
-            flags(is_rot_zoom[ref], 1, ref);
+            av1d_flags(is_rot_zoom[ref], 1, ref);
             if (current->is_rot_zoom[ref]) {
                 type = AV1_WARP_MODEL_ROTZOOM;
             } else {
-                flags(is_translation[ref], 1, ref);
+                av1d_flags(is_translation[ref], 1, ref);
                 type = current->is_translation[ref] ? AV1_WARP_MODEL_TRANSLATION
                        : AV1_WARP_MODEL_AFFINE;
             }
@@ -1650,7 +1654,7 @@ static RK_S32 mpp_av1_film_grain_params(AV1Context *ctx, BitReadCtx_t *gb,
         (!frame_header->show_frame && !frame_header->showable_frame))
         return 0;
 
-    flag(apply_grain);
+    av1d_flag(apply_grain);
 
     if (!current->apply_grain)
         return 0;
@@ -1658,7 +1662,7 @@ static RK_S32 mpp_av1_film_grain_params(AV1Context *ctx, BitReadCtx_t *gb,
     fb(16, grain_seed);
 
     if (frame_header->frame_type == AV1_FRAME_INTER)
-        flag(update_grain);
+        av1d_flag(update_grain);
     else
         infer(update_grain, 1);
 
@@ -1679,7 +1683,7 @@ static RK_S32 mpp_av1_film_grain_params(AV1Context *ctx, BitReadCtx_t *gb,
     if (seq->color_config.mono_chrome)
         infer(chroma_scaling_from_luma, 0);
     else
-        flag(chroma_scaling_from_luma);
+        av1d_flag(chroma_scaling_from_luma);
 
     if (seq->color_config.mono_chrome ||
         current->chroma_scaling_from_luma ||
@@ -1738,8 +1742,8 @@ static RK_S32 mpp_av1_film_grain_params(AV1Context *ctx, BitReadCtx_t *gb,
         fb(9, cr_offset);
     }
 
-    flag(overlap_flag);
-    flag(clip_to_restricted_range);
+    av1d_flag(overlap_flag);
+    av1d_flag(clip_to_restricted_range);
 
     return 0;
 }
@@ -1770,7 +1774,7 @@ static RK_S32 mpp_av1_uncompressed_header(AV1Context *ctx, BitReadCtx_t *gb,
         frame_is_intra = 1;
 
     } else {
-        flag(show_existing_frame);
+        av1d_flag(show_existing_frame);
 
         if (current->show_existing_frame) {
             AV1ReferenceFrameState *ref;
@@ -1830,7 +1834,7 @@ static RK_S32 mpp_av1_uncompressed_header(AV1Context *ctx, BitReadCtx_t *gb,
             Av1StoreCDFs(ctx, refresh_frame_flags);
         }
 
-        flag(show_frame);
+        av1d_flag(show_frame);
         if (current->show_frame &&
             seq->decoder_model_info_present_flag &&
             !seq->timing_info.equal_picture_interval) {
@@ -1840,13 +1844,13 @@ static RK_S32 mpp_av1_uncompressed_header(AV1Context *ctx, BitReadCtx_t *gb,
         if (current->show_frame)
             infer(showable_frame, current->frame_type != AV1_FRAME_KEY);
         else
-            flag(showable_frame);
+            av1d_flag(showable_frame);
 
         if (current->frame_type == AV1_FRAME_SWITCH ||
             (current->frame_type == AV1_FRAME_KEY && current->show_frame))
             infer(error_resilient_mode, 1);
         else
-            flag(error_resilient_mode);
+            av1d_flag(error_resilient_mode);
     }
 
     if (current->frame_type == AV1_FRAME_KEY && current->show_frame) {
@@ -1856,18 +1860,18 @@ static RK_S32 mpp_av1_uncompressed_header(AV1Context *ctx, BitReadCtx_t *gb,
         }
     }
 
-    flag(disable_cdf_update);
+    av1d_flag(disable_cdf_update);
 
     if (seq->seq_force_screen_content_tools ==
         AV1_SELECT_SCREEN_CONTENT_TOOLS) {
-        flag(allow_screen_content_tools);
+        av1d_flag(allow_screen_content_tools);
     } else {
         infer(allow_screen_content_tools,
               seq->seq_force_screen_content_tools);
     }
     if (current->allow_screen_content_tools) {
         if (seq->seq_force_integer_mv == AV1_SELECT_INTEGER_MV)
-            flag(force_integer_mv);
+            av1d_flag(force_integer_mv);
         else
             infer(force_integer_mv, seq->seq_force_integer_mv);
     } else {
@@ -1901,7 +1905,7 @@ static RK_S32 mpp_av1_uncompressed_header(AV1Context *ctx, BitReadCtx_t *gb,
     else if (seq->reduced_still_picture_header)
         infer(frame_size_override_flag, 0);
     else
-        flag(frame_size_override_flag);
+        av1d_flag(frame_size_override_flag);
 
     order_hint_bits =
         seq->enable_order_hint ? seq->order_hint_bits_minus_1 + 1 : 0;
@@ -1917,7 +1921,7 @@ static RK_S32 mpp_av1_uncompressed_header(AV1Context *ctx, BitReadCtx_t *gb,
         fb(3, primary_ref_frame);
 
     if (seq->decoder_model_info_present_flag) {
-        flag(buffer_removal_time_present_flag);
+        av1d_flag(buffer_removal_time_present_flag);
         if (current->buffer_removal_time_present_flag) {
             for (i = 0; i <= seq->operating_points_cnt_minus_1; i++) {
                 if (seq->decoder_model_present_for_this_op[i]) {
@@ -1962,7 +1966,7 @@ static RK_S32 mpp_av1_uncompressed_header(AV1Context *ctx, BitReadCtx_t *gb,
 
         if (current->allow_screen_content_tools &&
             ctx->upscaled_width == ctx->frame_width)
-            flag(allow_intrabc);
+            av1d_flag(allow_intrabc);
         else
             infer(allow_intrabc, 0);
 
@@ -1971,7 +1975,7 @@ static RK_S32 mpp_av1_uncompressed_header(AV1Context *ctx, BitReadCtx_t *gb,
         if (!seq->enable_order_hint) {
             infer(frame_refs_short_signaling, 0);
         } else {
-            flag(frame_refs_short_signaling);
+            av1d_flag(frame_refs_short_signaling);
             if (current->frame_refs_short_signaling) {
                 fb(3, last_frame_idx);
                 fb(3, golden_frame_idx);
@@ -1999,17 +2003,17 @@ static RK_S32 mpp_av1_uncompressed_header(AV1Context *ctx, BitReadCtx_t *gb,
         if (current->force_integer_mv)
             infer(allow_high_precision_mv, 0);
         else
-            flag(allow_high_precision_mv);
+            av1d_flag(allow_high_precision_mv);
 
         CHECK(mpp_av1_interpolation_filter(ctx, gb, current));
 
-        flag(is_motion_mode_switchable);
+        av1d_flag(is_motion_mode_switchable);
 
         if (current->error_resilient_mode ||
             !seq->enable_ref_frame_mvs)
             infer(use_ref_frame_mvs, 0);
         else
-            flag(use_ref_frame_mvs);
+            av1d_flag(use_ref_frame_mvs);
 
         infer(allow_intrabc, 0);
     }
@@ -2021,7 +2025,7 @@ static RK_S32 mpp_av1_uncompressed_header(AV1Context *ctx, BitReadCtx_t *gb,
     if (seq->reduced_still_picture_header || current->disable_cdf_update)
         infer(disable_frame_end_update_cdf, 1);
     else
-        flag(disable_frame_end_update_cdf);
+        av1d_flag(disable_frame_end_update_cdf);
 
     ctx->disable_frame_end_update_cdf = current->disable_frame_end_update_cdf;
 
@@ -2109,9 +2113,9 @@ static RK_S32 mpp_av1_uncompressed_header(AV1Context *ctx, BitReadCtx_t *gb,
         !seq->enable_warped_motion)
         infer(allow_warped_motion, 0);
     else
-        flag(allow_warped_motion);
+        av1d_flag(allow_warped_motion);
 
-    flag(reduced_tx_set);
+    av1d_flag(reduced_tx_set);
     av1d_dbg(AV1D_DBG_HEADER, "motion in%d", mpp_get_bits_count(gb));
 
     CHECK(mpp_av1_global_motion_params(ctx, gb, current));
@@ -2200,7 +2204,7 @@ static RK_S32 mpp_av1_tile_group_obu(AV1Context *ctx, BitReadCtx_t *gb,
 
     num_tiles = ctx->tile_cols * ctx->tile_rows;
     if (num_tiles > 1)
-        flag(tile_start_and_end_present_flag);
+        av1d_flag(tile_start_and_end_present_flag);
     else
         infer(tile_start_and_end_present_flag, 0);
 
@@ -2318,9 +2322,9 @@ static RK_S32 mpp_av1_scalability_structure(AV1Context *ctx, BitReadCtx_t *gb,
     seq = ctx->sequence_header;
 
     fb(2, spatial_layers_cnt_minus_1);
-    flag(spatial_layer_dimensions_present_flag);
-    flag(spatial_layer_description_present_flag);
-    flag(temporal_group_description_present_flag);
+    av1d_flag(spatial_layer_dimensions_present_flag);
+    av1d_flag(spatial_layer_description_present_flag);
+    av1d_flag(temporal_group_description_present_flag);
     fc(3, scalability_structure_reserved_3bits, 0, 0);
     if (current->spatial_layer_dimensions_present_flag) {
         for (i = 0; i <= current->spatial_layers_cnt_minus_1; i++) {
@@ -2338,8 +2342,8 @@ static RK_S32 mpp_av1_scalability_structure(AV1Context *ctx, BitReadCtx_t *gb,
         fb(8, temporal_group_size);
         for (i = 0; i < current->temporal_group_size; i++) {
             fbs(3, temporal_group_temporal_id[i], 1, i);
-            flags(temporal_group_temporal_switching_up_point_flag[i], 1, i);
-            flags(temporal_group_spatial_switching_up_point_flag[i], 1, i);
+            av1d_flags(temporal_group_temporal_switching_up_point_flag[i], 1, i);
+            av1d_flags(temporal_group_spatial_switching_up_point_flag[i], 1, i);
             fbs(3, temporal_group_ref_cnt[i], 1, i);
             for (j = 0; j < current->temporal_group_ref_cnt[i]; j++) {
                 fbs(8, temporal_group_ref_pic_diff[i][j], 2, i, j);
@@ -2539,9 +2543,9 @@ static RK_S32 mpp_av1_metadata_timecode(AV1Context *ctx, BitReadCtx_t *gb,
     (void)ctx;
 
     fb(5, counting_type);
-    flag(full_timestamp_flag);
-    flag(discontinuity_flag);
-    flag(cnt_dropped_flag);
+    av1d_flag(full_timestamp_flag);
+    av1d_flag(discontinuity_flag);
+    av1d_flag(cnt_dropped_flag);
     fb(9, n_frames);
 
     if (current->full_timestamp_flag) {
@@ -2549,13 +2553,13 @@ static RK_S32 mpp_av1_metadata_timecode(AV1Context *ctx, BitReadCtx_t *gb,
         fc(6, minutes_value, 0, 59);
         fc(5, hours_value,   0, 23);
     } else {
-        flag(seconds_flag);
+        av1d_flag(seconds_flag);
         if (current->seconds_flag) {
             fc(6, seconds_value, 0, 59);
-            flag(minutes_flag);
+            av1d_flag(minutes_flag);
             if (current->minutes_flag) {
                 fc(6, minutes_value, 0, 59);
-                flag(hours_flag);
+                av1d_flag(hours_flag);
                 if (current->hours_flag)
                     fc(5, hours_value, 0, 23);
             }
