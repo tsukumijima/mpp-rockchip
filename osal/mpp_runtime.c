@@ -5,6 +5,7 @@
 
 #define MODULE_TAG "mpp_rt"
 
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -62,6 +63,7 @@ static const char *mpp_vpu_address[] = {
 
 typedef struct MppRuntimeService_t {
     rk_u32  allocator_valid[MPP_BUFFER_TYPE_BUTT];
+    void *mpp_ext;
 } MppRuntimeSrv;
 
 static MppRuntimeSrv *srv_runtime;
@@ -82,6 +84,9 @@ static void mpp_rt_srv_init()
     }
 
     srv_runtime = srv;
+
+    /* try load libmpp_parser.so */
+    srv->mpp_ext = dlopen("libmpp_ext.so", RTLD_LAZY | RTLD_GLOBAL);
 
     srv->allocator_valid[MPP_BUFFER_TYPE_NORMAL] = 1;
     srv->allocator_valid[MPP_BUFFER_TYPE_ION] = !access("/dev/ion", F_OK | R_OK | W_OK);
@@ -180,6 +185,16 @@ static void mpp_rt_srv_init()
 
 static void mpp_rt_srv_deinit()
 {
+    MppRuntimeSrv *srv = srv_runtime;
+
+    if (!srv)
+        return;
+
+    if (srv->mpp_ext) {
+        dlclose(srv->mpp_ext);
+        srv->mpp_ext = NULL;
+    }
+
     MPP_FREE(srv_runtime);
 }
 

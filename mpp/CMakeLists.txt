@@ -79,7 +79,7 @@ set_target_properties(${MPP_SHARED} PROPERTIES FOLDER "mpp")
 set_target_properties(${MPP_SHARED} PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 target_link_libraries(${MPP_SHARED} PRIVATE kmpp
     ${BEGIN_WHOLE_ARCHIVE} mpp_vproc mpp_codec mpp_hal mpp_base kmpp_base osal ${END_WHOLE_ARCHIVE})
-target_link_libraries(${MPP_SHARED} PUBLIC ${LIBM} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${MPP_SHARED} PUBLIC ${LIBM} ${CMAKE_THREAD_LIBS_INIT} dl)
 
 # those special platform here
 if(ANDROID)

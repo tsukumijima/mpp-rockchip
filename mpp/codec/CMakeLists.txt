@@ -41,6 +41,20 @@ merge_objects("${CODEC_VP8E}"   vp8e_api)
 target_link_libraries(mpp_codec
     mpp_rc
     enc_rc
+    ${CODEC_H264E}
+    ${CODEC_H265E}
+    ${CODEC_JPEGE}
+    ${CODEC_VP8E}
+    dec_common
+    )
+
+
+
+add_library(mpp_ext SHARED mpp_ext.c)
+target_link_libraries(mpp_ext ${ASAN_LIB})
+target_link_libraries(mpp_ext PUBLIC ${MPP_SHARED})
+target_link_libraries(mpp_ext PRIVATE
+    ${BEGIN_WHOLE_ARCHIVE}
     ${CODEC_AVSD}
     ${CODEC_AVS2D}
     ${CODEC_H263D}
@@ -52,9 +66,13 @@ target_link_libraries(mpp_codec
     ${CODEC_VP9D}
     ${CODEC_JPEGD}
     ${CODEC_AV1D}
-    ${CODEC_H264E}
-    ${CODEC_H265E}
-    ${CODEC_JPEGE}
-    ${CODEC_VP8E}
-    dec_common
-    )
+    ${END_WHOLE_ARCHIVE}
+)
+
+set_target_properties(mpp_ext PROPERTIES FOLDER "mpp")
+set_target_properties(mpp_ext PROPERTIES C_VISIBILITY_PRESET default)
+set_target_properties(mpp_ext PROPERTIES CXX_VISIBILITY_PRESET default)
+set_target_properties(mpp_ext PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+set_target_properties(mpp_ext PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/mpp)
+
+install(TARGETS mpp_ext LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
