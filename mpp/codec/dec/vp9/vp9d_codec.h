@@ -1,20 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 OR MIT */
 /*
- * Copyright (C) 2016 The FFmpeg project
- * Copyright (c) 2016 Rockchip Electronics Co., Ltd.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * Copyright (c) 2015 Rockchip Electronics Co., Ltd.
  */
 
 #ifndef VP9D_CODEC_H
@@ -25,82 +11,144 @@
 
 #include "vp9d_syntax.h"
 
-typedef struct VP9ParseContext {
-    RK_S32 n_frames; // 1-8
-    RK_S32 size[8];
-    RK_S64 pts;
-} VP9ParseContext;
-#define MPP_PARSER_PTS_NB 4
+typedef enum VP9Profile_e {
+    VP9_PROFILE_0 = 0,
+    VP9_PROFILE_1 = 1,
+    VP9_PROFILE_2 = 2,
+    VP9_PROFILE_3 = 3,
+    VP9_MAX_PROFILES
+} VP9Profile;
 
-typedef struct SplitContext {
-    RK_U8 *buffer;
-    RK_U32 buffer_size;
-    RK_S32 index;
-    RK_S32 last_index;
-    RK_U32 state;             ///< contains the last few bytes in MSB order
-    RK_S32 frame_start_found;
-    RK_S32 overread;               ///< the number of bytes which where irreversibly read from the next frame
-    RK_S32 overread_index;         ///< the index into ParseContext.buffer of the overread bytes
-    RK_U64 state64;           ///< contains the last 8 bytes in MSB order
-    RK_S64 pts;     /* pts of the current frame */
-    RK_S64 dts;     /* dts of the current frame */
-    RK_S64 frame_offset; /* offset of the current frame */
-    RK_S64 cur_offset; /* current offset
-                           (incremented by each av_parser_parse()) */
-    RK_S64 next_frame_offset; /* offset of the next frame */
+typedef enum VP9TxfmMode_e {
+    VP9_TX_4X4          = 0,
+    VP9_TX_8X8          = 1,
+    VP9_TX_16X16        = 2,
+    VP9_TX_32X32        = 3,
+    VP9_TX_SWITCHABLE   = 4,
+    VP9_N_TXFM_MODES
+} VP9TxfmMode;
 
-    /* private data */
-    void  *priv_data;
-    RK_S64 last_pts;
-    RK_S64 last_dts;
-    RK_S32 fetch_timestamp;
+typedef enum VP9TxfmType_e {
+    VP9_DCT_DCT         = 0,
+    VP9_DCT_ADST        = 1,
+    VP9_ADST_DCT        = 2,
+    VP9_ADST_ADST       = 3,
+    VP9_N_TXFM_TYPES
+} VP9TxfmType;
 
-    RK_S32 cur_frame_start_index;
-    RK_S64 cur_frame_offset[MPP_PARSER_PTS_NB];
-    RK_S64 cur_frame_pts[MPP_PARSER_PTS_NB];
-    RK_S64 cur_frame_dts[MPP_PARSER_PTS_NB];
+typedef enum VP9IntraPredMode_e {
+    VP9_VERT_PRED       = 0,
+    VP9_HOR_PRED        = 1,
+    VP9_DC_PRED         = 2,
+    VP9_DIAG_DOWN_LEFT_PRED = 3,
+    VP9_DIAG_DOWN_RIGHT_PRED = 4,
+    VP9_VERT_RIGHT_PRED = 5,
+    VP9_HOR_DOWN_PRED   = 6,
+    VP9_VERT_LEFT_PRED  = 7,
+    VP9_HOR_UP_PRED     = 8,
+    VP9_TM_VP8_PRED     = 9,
+    VP9_LEFT_DC_PRED    = 10,
+    VP9_TOP_DC_PRED     = 11,
+    VP9_DC_128_PRED     = 12,
+    VP9_DC_127_PRED     = 13,
+    VP9_DC_129_PRED     = 14,
+    VP9_N_INTRA_PRED_MODES
+} VP9IntraPredMode;
 
-    RK_S64 offset;      ///< byte offset from starting packet start
-    RK_S64 cur_frame_end[MPP_PARSER_PTS_NB];
-    /**
-     * Set by parser to 1 for key frames and 0 for non-key frames.
-     * It is initialized to -1, so if the parser doesn't set this flag,
-     * old-style fallback using AV_PICTURE_TYPE_I picture type as key frames
-     * will be used.
-     */
-    RK_S32 key_frame;
-    RK_S32 eos;
-} SplitContext_t;
+typedef enum VP9FilterMode_e {
+    VP9_FILTER_8TAP_SMOOTH  = 0,
+    VP9_FILTER_8TAP_REGULAR = 1,
+    VP9_FILTER_8TAP_SHARP   = 2,
+    VP9_FILTER_BILINEAR     = 3,
+    VP9_FILTER_SWITCHABLE   = 4,
+} VP9FilterMode;
 
-typedef struct Vp9CodecContext {
 
-    void *priv_data; /* VP9Context */
-    void *priv_data2; /* AVParserContext */
+typedef enum VP9CompPredMode_e {
+    VP9_PRED_SINGLEREF = 0,
+    VP9_PRED_COMPREF    = 1,
+    VP9_PRED_SWITCHABLE = 2,
+} VP9CompPredMode;
 
-    RK_S32 pix_fmt;
+typedef enum VP9BlockLevel_e {
+    VP9_BL_64X64       = 0,
+    VP9_BL_32X32       = 1,
+    VP9_BL_16X16       = 2,
+    VP9_BL_8X8         = 3,
+} VP9BlockLevel;
 
-    RK_S32 profile;
-#define FF_PROFILE_VP9_0                            0
-#define FF_PROFILE_VP9_1                            1
-#define FF_PROFILE_VP9_2                            2
-#define FF_PROFILE_VP9_3                            3
+typedef enum VP9BlockSize_e {
+    VP9_BS_64x64       = 0,
+    VP9_BS_64x32       = 1,
+    VP9_BS_32x64       = 2,
+    VP9_BS_32x32       = 3,
+    VP9_BS_32x16       = 4,
+    VP9_BS_16x32       = 5,
+    VP9_BS_16x16       = 6,
+    VP9_BS_16x8        = 7,
+    VP9_BS_8x16        = 8,
+    VP9_BS_8x8         = 9,
+    VP9_BS_8x4         = 10,
+    VP9_BS_4x8         = 11,
+    VP9_BS_4x4         = 12,
+    N_BS_SIZES         = 13,
+} VP9BlockSize;
 
-    RK_S32 level;
-#define FF_LEVEL_UNKNOWN -99
+typedef struct Vp9dReader_t {
+    RK_S32 range;
+    RK_S32 bits_left;
+    const RK_U8 *buffer;
+    const RK_U8 *buffer_end;
+    RK_U32 value;
+} Vp9dReader;
 
-    MppFrameColorSpace colorspace;
+typedef struct Vp9ProbCtx_t {
+    RK_U8 y_mode[4][9];
+    RK_U8 uv_mode[10][9];
+    RK_U8 filter[4][2];
+    RK_U8 mv_mode[7][3];
+    RK_U8 intra[4];
+    RK_U8 comp[5];
+    RK_U8 single_ref[5][2];
+    RK_U8 comp_ref[5];
+    RK_U8 tx32p[2][3];
+    RK_U8 tx16p[2][2];
+    RK_U8 tx8p[2];
+    RK_U8 skip[3];
+    RK_U8 mv_joint[3];
+    struct {
+        RK_U8 sign;
+        RK_U8 classes[10];
+        RK_U8 class0;
+        RK_U8 bits[10];
+        RK_U8 class0_fp[2][3];
+        RK_U8 fp[3];
+        RK_U8 class0_hp;
+        RK_U8 hp;
+    } mv_comp[2];
+    RK_U8 partition[4][4][3];
+} Vp9ProbCtx;
 
-    MppFrameColorRange color_range;
+// extern const variables
+extern const RK_S16 vp9_dc_qlookup[3][256];
+extern const RK_S16 vp9_ac_qlookup[3][256];
+extern const Vp9ProbCtx vp9_default_probs;
+extern const RK_U8 vp9_default_coef_probs[4][2][2][6][6][3];
 
-    RK_S32 width, height;
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
-    MppPacket pkt;
+// vp9 specific bitread range decoder
+RK_S32 vp9d_reader_init(Vp9dReader *r, const uint8_t *buf, RK_S32 buf_size);
+RK_S32 vp9d_read(Vp9dReader *r, RK_S32 prob);
+RK_S32 vp9d_read_bit(Vp9dReader *r);
+RK_S32 vp9d_read_bits(Vp9dReader *r, RK_S32 bits);
+RK_S32 vp9d_diff_update_prob(Vp9dReader *r, RK_S32 prob, RK_U8 *delta);
+RK_S32 vp9d_merge_prob(RK_U8 *prob, RK_U32 cout0, RK_U32 cout1, RK_S32 max_count, RK_S32 factor);
 
-    // DXVA_segmentation_VP9 segmentation;
-    DXVA_PicParams_VP9 pic_params;
-    // DXVA_Slice_VPx_Short slice_short;
-    RK_S32 eos;
-} Vp9CodecContext;
+#ifdef  __cplusplus
+}
+#endif
 
 #endif /* VP9D_CODEC_H */
-

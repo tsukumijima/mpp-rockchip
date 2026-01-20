@@ -96,7 +96,6 @@ typedef struct Vepu511H265eFrmCfg_t {
 } Vepu511H265eFrmCfg;
 
 typedef struct H265eV511HalContext_t {
-    MppEncHalApi        api;
     MppDev              dev;
     void                *regs;
     void                *reg_out;
@@ -223,6 +222,7 @@ static RK_U32 rdo_lambda_table_P[60] = {
     0x01120000, 0x01600000, 0x01c00000, 0x02240000,
 };
 
+/* scale_iq */
 static RK_U8 vepu511_h265_cqm_intra8[64] = {
     16, 16, 16, 16, 17, 18, 21, 24,
     16, 16, 16, 16, 17, 19, 22, 25,
@@ -234,6 +234,7 @@ static RK_U8 vepu511_h265_cqm_intra8[64] = {
     24, 25, 29, 36, 47, 65, 88, 115
 };
 
+/* scale_iq */
 static RK_U8 vepu511_h265_cqm_inter8[64] = {
     16, 16, 16, 16, 17, 18, 20, 24,
     16, 16, 16, 17, 18, 20, 24, 25,
@@ -243,6 +244,30 @@ static RK_U8 vepu511_h265_cqm_inter8[64] = {
     18, 20, 24, 25, 28, 33, 41, 54,
     20, 24, 25, 28, 33, 41, 54, 71,
     24, 25, 28, 33, 41, 54, 71, 91
+};
+
+/* scale_q = (65536 + scale_iq / 2) / scale_iq */
+static RK_U16 vepu511_h265_cqm_intra8_q[64] = {
+    4096,  4096,  4096,  4096,  3855,  3641,  3121,  2731,
+    4096,  4096,  4096,  4096,  3855,  3449,  2979,  2621,
+    4096,  4096,  3855,  3641,  3277,  2979,  2621,  2260,
+    4096,  4096,  3641,  3121,  2731,  2427,  2114,  1820,
+    3855,  3855,  3277,  2731,  2185,  1872,  1598,  1394,
+    3641,  3449,  2979,  2427,  1872,  1489,  1214,  1008,
+    3121,  2979,  2621,  2114,  1598,  1214,   936,   745,
+    2731,  2621,  2260,  1820,  1394,  1008,   745,   570
+};
+
+/* scale_q = (65536 + scale_iq / 2) / scale_iq */
+static RK_U16 vepu511_h265_cqm_inter8_q[64] = {
+    4096,  4096,  4096,  4096,  3855,  3641,  3277,  2731,
+    4096,  4096,  4096,  3855,  3641,  3277,  2731,  2621,
+    4096,  4096,  3855,  3641,  3277,  2731,  2621,  2341,
+    4096,  3855,  3641,  3277,  2731,  2621,  2341,  1986,
+    3855,  3641,  3277,  2731,  2621,  2341,  1986,  1598,
+    3641,  3277,  2731,  2621,  2341,  1986,  1598,  1214,
+    3277,  2731,  2621,  2341,  1986,  1598,  1214,   923,
+    2731,  2621,  2341,  1986,  1598,  1214,   923,   720
 };
 
 void save_to_file_511(char *name, void *ptr, size_t size)
@@ -608,7 +633,7 @@ static MPP_RET
 vepu511_h265_set_patch_info(H265eSyntax_new *syn, VepuFmt input_fmt, MppDevRegOffCfgs *offsets, HalEncTask *task)
 {
     RK_U32 hor_stride = syn->pp.hor_stride;
-    RK_U32 ver_stride = syn->pp.ver_stride ? syn->pp.ver_stride : syn->pp.pic_height;
+    RK_U32 ver_stride = (syn->pp.ver_stride != 0) ? syn->pp.ver_stride : syn->pp.pic_height;
     RK_U32 frame_size = hor_stride * ver_stride;
     RK_U32 u_offset = 0, v_offset = 0;
     MPP_RET ret = MPP_OK;
@@ -758,8 +783,9 @@ static void vepu511_h265_set_scaling_list(H265eV511RegSet *regs)
 {
     Vepu511SclCfg *s = &regs->reg_scl_jpgtbl.scl;
     Vepu511SclCfgExt *s_ext = &regs->reg_scl_jpgtbl.scl_ext;
-    RK_U8 *p = (RK_U8 *)&s->tu8_intra_y[0];
     RK_U32 scl_lst_sel = regs->reg_frm.reg0232_rdo_cfg.scl_lst_sel;
+    RK_U8 *p = (RK_U8 *)&s->tu8_intra_y[0];
+    RK_U16 *q = (RK_U16 *)&s_ext->tu8_intra_y[0];
     RK_U8 idx;
 
     hal_h265e_dbg_func("enter\n");
@@ -768,28 +794,47 @@ static void vepu511_h265_set_scaling_list(H265eV511RegSet *regs)
         for (idx = 0; idx < 64; idx++) {
             /* TU8 intra Y/U/V */
             p[idx + 64 * 0] = vepu511_h265_cqm_intra8[63 - idx];
-
             p[idx + 64 * 1] = vepu511_h265_cqm_intra8[63 - idx];
             p[idx + 64 * 2] = vepu511_h265_cqm_intra8[63 - idx];
+
+            q[idx + 64 * 0] = vepu511_h265_cqm_intra8_q[63 - idx];
+            q[idx + 64 * 1] = vepu511_h265_cqm_intra8_q[63 - idx];
+            q[idx + 64 * 2] = vepu511_h265_cqm_intra8_q[63 - idx];
 
             /* TU8 inter Y/U/V */
             p[idx + 64 * 3] = vepu511_h265_cqm_inter8[63 - idx];
             p[idx + 64 * 4] = vepu511_h265_cqm_inter8[63 - idx];
             p[idx + 64 * 5] = vepu511_h265_cqm_inter8[63 - idx];
 
+            q[idx + 64 * 3] = vepu511_h265_cqm_inter8_q[63 - idx];
+            q[idx + 64 * 4] = vepu511_h265_cqm_inter8_q[63 - idx];
+            q[idx + 64 * 5] = vepu511_h265_cqm_inter8_q[63 - idx];
+
             /* TU16 intra Y/U/V AC */
             p[idx + 64 * 6] = vepu511_h265_cqm_intra8[63 - idx];
             p[idx + 64 * 7] = vepu511_h265_cqm_intra8[63 - idx];
             p[idx + 64 * 8] = vepu511_h265_cqm_intra8[63 - idx];
+
+
+            q[idx + 64 * 6] = vepu511_h265_cqm_intra8_q[63 - idx];
+            q[idx + 64 * 7] = vepu511_h265_cqm_intra8_q[63 - idx];
+            q[idx + 64 * 8] = vepu511_h265_cqm_intra8_q[63 - idx];
 
             /* TU16 inter Y/U/V AC */
             p[idx + 64 *  9] = vepu511_h265_cqm_inter8[63 - idx];
             p[idx + 64 * 10] = vepu511_h265_cqm_inter8[63 - idx];
             p[idx + 64 * 11] = vepu511_h265_cqm_inter8[63 - idx];
 
+            q[idx + 64 *  9] = vepu511_h265_cqm_inter8_q[63 - idx];
+            q[idx + 64 * 10] = vepu511_h265_cqm_inter8_q[63 - idx];
+            q[idx + 64 * 11] = vepu511_h265_cqm_inter8_q[63 - idx];
+
             /* TU32 intra/inter Y AC */
             p[idx + 64 * 12] = vepu511_h265_cqm_intra8[63 - idx];
             p[idx + 64 * 13] = vepu511_h265_cqm_inter8[63 - idx];
+
+            q[idx + 64 * 12] = vepu511_h265_cqm_intra8_q[63 - idx];
+            q[idx + 64 * 13] = vepu511_h265_cqm_inter8_q[63 - idx];
         }
 
         s->tu_dc0.tu16_intra_y_dc = 16;
@@ -994,8 +1039,8 @@ static void vepu511_h265_set_split(H265eV511RegSet *regs, MppEncCfgSet *enc_cfg)
         regs->reg_frm.reg0218_sli_cnum.sli_splt_cnum_m1 = 0;
 
         regs->reg_frm.reg0217_sli_byte.sli_splt_byte  = cfg->split_arg;
-        regs->reg_frm.reg0192_enc_pic.slen_fifo       = cfg->split_out ? 1 : 0;
-        regs->reg_ctl.int_en.vslc_done_en             = cfg->split_out ? 1 : 0;
+        regs->reg_frm.reg0192_enc_pic.slen_fifo       = (cfg->split_out != 0) ? 1 : 0;
+        regs->reg_ctl.int_en.vslc_done_en             = (cfg->split_out != 0) ? 1 : 0;
     } break;
     case MPP_ENC_SPLIT_BY_CTU : {
         regs->reg_frm.reg0216_sli_splt.sli_splt         = 1;
@@ -1006,8 +1051,8 @@ static void vepu511_h265_set_split(H265eV511RegSet *regs, MppEncCfgSet *enc_cfg)
         regs->reg_frm.reg0218_sli_cnum.sli_splt_cnum_m1 = cfg->split_arg - 1;
 
         regs->reg_frm.reg0217_sli_byte.sli_splt_byte = 0;
-        regs->reg_frm.reg0192_enc_pic.slen_fifo = cfg->split_out ? 1 : 0;
-        regs->reg_ctl.int_en.vslc_done_en = cfg->split_out ? 1 : 0;
+        regs->reg_frm.reg0192_enc_pic.slen_fifo = (cfg->split_out != 0) ? 1 : 0;
+        regs->reg_ctl.int_en.vslc_done_en = (cfg->split_out != 0) ? 1 : 0;
     } break;
     default : {
         mpp_log_f("invalide slice split mode %d\n", cfg->split_mode);
@@ -2021,7 +2066,7 @@ static void vepu511_h265_set_slice_regs(H265eV511HalContext *ctx, H265eSyntax_ne
     regs->reg0240_synt_sli1.sli_lp_fltr_acrs_sli  = syn->sp.sli_lp_fltr_acrs_sli;
     regs->reg0240_synt_sli1.sp_dblk_fltr_dis      = syn->sp.sli_dblk_fltr_dis;
     regs->reg0240_synt_sli1.dblk_fltr_ovrd_flg    = syn->sp.dblk_fltr_ovrd_flg;
-    regs->reg0240_synt_sli1.sli_cb_qp_ofst = syn->pp.pps_slice_chroma_qp_offsets_present_flag ?
+    regs->reg0240_synt_sli1.sli_cb_qp_ofst = (syn->pp.pps_slice_chroma_qp_offsets_present_flag != 0) ?
                                              syn->sp.sli_cb_qp_ofst : syn->pp.pps_cb_qp_offset;
 
     if (ctx->cfg->tune.speed == 0) // 0.63ppc
@@ -2741,7 +2786,7 @@ static void vepu511_h265e_update_tune_stat(H265eV511HalContext *ctx, HalEncTask 
         fb->st_madp = fb->st_madp / madp_cnt;
 
     fb->st_mb_num += st->st_bnum_b16.num_b16;
-    fb->frame_type = task->rc_task->frm.is_intra ? INTRA_FRAME : INTER_P_FRAME;
+    fb->frame_type = (task->rc_task->frm.is_intra != 0) ? INTRA_FRAME : INTER_P_FRAME;
     info->bit_real = fb->out_strm_size * 8;
     info->madi = fb->st_madi;
     info->madp = fb->st_madp;
@@ -2958,4 +3003,11 @@ const MppEncHalApi hal_h265e_vepu511 = {
     .part_start = NULL,
     .part_wait  = NULL,
     .ret_task   = hal_h265e_vepu511_ret_task,
+    .client     = VPU_CLIENT_RKVENC,
+    .soc_type   = {
+        ROCKCHIP_SOC_RV1126B,
+        ROCKCHIP_SOC_BUTT
+    },
 };
+
+MPP_ENC_HAL_API_REGISTER(hal_h265e_vepu511)

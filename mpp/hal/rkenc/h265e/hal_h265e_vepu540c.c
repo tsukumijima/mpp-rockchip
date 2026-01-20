@@ -67,7 +67,6 @@ typedef struct vepu540c_h265_fbk_t {
 } vepu540c_h265_fbk;
 
 typedef struct H265eV540cHalContext_t {
-    MppEncHalApi        api;
     MppDev              dev;
     void                *regs;
     void                *reg_out[MAX_TITLE_NUM];
@@ -610,7 +609,7 @@ static MPP_RET
 vepu540c_h265_set_patch_info(MppDev dev, H265eSyntax_new *syn, VepuFmt input_fmt, HalEncTask *task)
 {
     RK_U32 hor_stride = syn->pp.hor_stride;
-    RK_U32 ver_stride = syn->pp.ver_stride ? syn->pp.ver_stride : syn->pp.pic_height;
+    RK_U32 ver_stride = (syn->pp.ver_stride != 0) ? syn->pp.ver_stride : syn->pp.pic_height;
     RK_U32 frame_size = hor_stride * ver_stride;
     RK_U32 u_offset = 0, v_offset = 0;
     MPP_RET ret = MPP_OK;
@@ -1154,7 +1153,7 @@ static void vepu540c_h265_set_split(H265eV540cRegSet *regs, MppEncCfgSet *enc_cf
         regs->reg_base.reg0218_sli_cnum.sli_splt_cnum_m1 = 0;
 
         regs->reg_base.reg0217_sli_byte.sli_splt_byte = cfg->split_arg;
-        regs->reg_base.reg0192_enc_pic.slen_fifo = cfg->split_out ? 1 : 0;
+        regs->reg_base.reg0192_enc_pic.slen_fifo = (cfg->split_out != 0) ? 1 : 0;
         regs->reg_ctl.reg0008_int_en.vslc_done_en = regs->reg_base.reg0192_enc_pic.slen_fifo;
     } break;
     case MPP_ENC_SPLIT_BY_CTU : {
@@ -1175,7 +1174,7 @@ static void vepu540c_h265_set_split(H265eV540cRegSet *regs, MppEncCfgSet *enc_cf
         regs->reg_base.reg0218_sli_cnum.sli_splt_cnum_m1 = cfg->split_arg - 1;
 
         regs->reg_base.reg0217_sli_byte.sli_splt_byte = 0;
-        regs->reg_base.reg0192_enc_pic.slen_fifo = cfg->split_out ? 1 : 0;
+        regs->reg_base.reg0192_enc_pic.slen_fifo = (cfg->split_out != 0) ? 1 : 0;
 
         if ((cfg->split_out & MPP_ENC_SPLIT_OUT_LOWDELAY) ||
             (regs->reg_base.reg0192_enc_pic.slen_fifo && (slice_num > VEPU540C_SLICE_FIFO_LEN)))
@@ -1259,10 +1258,10 @@ MPP_RET hal_h265e_v540c_gen_regs(void *hal, HalEncTask *task)
     reg_ctl->reg0021_func_en.enc_done_tmvp_en   = 1;
 
     reg_base->reg0196_enc_rsl.pic_wd8_m1    = pic_width_align8 / 8 - 1;
-    reg_base->reg0197_src_fill.pic_wfill    = (syn->pp.pic_width & 0x7)
+    reg_base->reg0197_src_fill.pic_wfill    = ((syn->pp.pic_width & 0x7) != 0)
                                               ? (8 - (syn->pp.pic_width & 0x7)) : 0;
     reg_base->reg0196_enc_rsl.pic_hd8_m1    = pic_height_align8 / 8 - 1;
-    reg_base->reg0197_src_fill.pic_hfill    = (syn->pp.pic_height & 0x7)
+    reg_base->reg0197_src_fill.pic_hfill    = ((syn->pp.pic_height & 0x7) != 0)
                                               ? (8 - (syn->pp.pic_height & 0x7)) : 0;
 
     reg_base->reg0192_enc_pic.enc_stnd      = 1; //H265
@@ -1694,18 +1693,26 @@ MPP_RET hal_h265e_v540c_ret_task(void *hal, HalEncTask *task)
 }
 
 const MppEncHalApi hal_h265e_vepu540c = {
-    "hal_h265e_v540c",
-    MPP_VIDEO_CodingHEVC,
-    sizeof(H265eV540cHalContext),
-    0,
-    hal_h265e_v540c_init,
-    hal_h265e_v540c_deinit,
-    hal_h265e_vepu540c_prepare,
-    hal_h265e_v540c_get_task,
-    hal_h265e_v540c_gen_regs,
-    hal_h265e_v540c_start,
-    hal_h265e_v540c_wait,
-    NULL,
-    NULL,
-    hal_h265e_v540c_ret_task,
+    .name       = "hal_h265e_v540c",
+    .coding     = MPP_VIDEO_CodingHEVC,
+    .ctx_size   = sizeof(H265eV540cHalContext),
+    .flag       = 0,
+    .init       = hal_h265e_v540c_init,
+    .deinit     = hal_h265e_v540c_deinit,
+    .prepare    = hal_h265e_vepu540c_prepare,
+    .get_task   = hal_h265e_v540c_get_task,
+    .gen_regs   = hal_h265e_v540c_gen_regs,
+    .start      = hal_h265e_v540c_start,
+    .wait       = hal_h265e_v540c_wait,
+    .part_start = NULL,
+    .part_wait  = NULL,
+    .ret_task   = hal_h265e_v540c_ret_task,
+    .client     = VPU_CLIENT_RKVENC,
+    .soc_type   = {
+        ROCKCHIP_SOC_RK3528,
+        ROCKCHIP_SOC_RK3562,
+        ROCKCHIP_SOC_BUTT
+    },
 };
+
+MPP_ENC_HAL_API_REGISTER(hal_h265e_vepu540c)

@@ -24,7 +24,7 @@
 #include "mpp_packet_impl.h"
 #include "mpp_frame_impl.h"
 
-#include "h264d_api.h"
+#include "mpp_parser.h"
 #include "h264d_global.h"
 #include "h264d_parse.h"
 #include "h264d_sps.h"
@@ -33,8 +33,6 @@
 #include "h264d_init.h"
 #include "h2645d_sei.h"
 #include "mpp_dec_cb_param.h"
-
-RK_U32 h264d_debug = 0;
 
 // for mblock 16 coded width align
 static RK_U32 rkv_mblock_width_align(RK_U32 val)
@@ -312,13 +310,39 @@ __RETURN:
 __FAILED:
     return ret = MPP_NOK;
 }
+
+/*!
+***********************************************************************
+* \brief
+*   free all buffer
+***********************************************************************
+*/
+MPP_RET h264d_deinit(void *decoder)
+{
+    MPP_RET ret = MPP_ERR_UNKNOW;
+    H264_DecCtx_t *p_Dec = (H264_DecCtx_t *)decoder;
+
+    INP_CHECK(ret, !decoder);
+
+    mpp_frame_deinit(&p_Dec->curframe);
+    free_input_ctx(p_Dec->p_Inp);
+    MPP_FREE(p_Dec->p_Inp);
+    free_cur_ctx(p_Dec->p_Cur);
+    MPP_FREE(p_Dec->p_Cur);
+    free_vid_ctx(p_Dec->p_Vid);
+    MPP_FREE(p_Dec->p_Vid);
+    free_dec_ctx(p_Dec);
+
+__RETURN:
+    return ret = MPP_OK;
+}
+
 /*!
 ***********************************************************************
 * \brief
 *   alloc all buffer
 ***********************************************************************
 */
-
 MPP_RET h264d_init(void *decoder, ParserCfg *init)
 {
     MPP_RET ret = MPP_ERR_UNKNOW;
@@ -368,31 +392,7 @@ __FAILED:
 
     return ret;
 }
-/*!
-***********************************************************************
-* \brief
-*   free all buffer
-***********************************************************************
-*/
-MPP_RET h264d_deinit(void *decoder)
-{
-    MPP_RET ret = MPP_ERR_UNKNOW;
-    H264_DecCtx_t *p_Dec = (H264_DecCtx_t *)decoder;
 
-    INP_CHECK(ret, !decoder);
-
-    mpp_frame_deinit(&p_Dec->curframe);
-    free_input_ctx(p_Dec->p_Inp);
-    MPP_FREE(p_Dec->p_Inp);
-    free_cur_ctx(p_Dec->p_Cur);
-    MPP_FREE(p_Dec->p_Cur);
-    free_vid_ctx(p_Dec->p_Vid);
-    MPP_FREE(p_Dec->p_Vid);
-    free_dec_ctx(p_Dec);
-
-__RETURN:
-    return ret = MPP_OK;
-}
 /*!
 ***********************************************************************
 * \brief
@@ -660,7 +660,7 @@ MPP_RET h264d_parse(void *decoder, HalDecTask *in_task)
         in_task->syntax.number = p_Dec->dxva_ctx->syn.num;
         in_task->syntax.data   = (void *)p_Dec->dxva_ctx->syn.buf;
         in_task->flags.used_for_ref = p_err->used_ref_flag;
-        in_task->flags.ref_err |= (p_err->dpb_err_flag | p_err->cur_err_flag) ? 1 : 0;
+        in_task->flags.ref_err |= ((p_err->dpb_err_flag | p_err->cur_err_flag) != 0) ? 1 : 0;
     }
 
     return ret;
@@ -679,7 +679,7 @@ MPP_RET h264d_callback(void *decoder, void *errinfo)
     DecCbHalDone *ctx = (DecCbHalDone *)errinfo;
     HalDecTask *task_dec = (HalDecTask *)ctx->task;
     RK_U32 task_err = task_dec->flags.parse_err || task_dec->flags.ref_err;
-    RK_U32 ref_used = task_dec->flags.ref_info_valid ? task_dec->flags.ref_used : 0;
+    RK_U32 ref_used = (task_dec->flags.ref_info_valid != 0) ? task_dec->flags.ref_used : 0;
     RK_U32 hw_dec_err = ctx->hard_err;
     RK_S32 output = task_dec->output;
     RK_U32 err_mark = 0;
@@ -762,7 +762,7 @@ __RETURN:
 ***********************************************************************
 */
 
-const ParserApi api_h264d_parser = {
+const ParserApi mpp_h264d = {
     .name = "h264d_parse",
     .coding = MPP_VIDEO_CodingAVC,
     .ctx_size = sizeof(H264_DecCtx_t),
@@ -777,3 +777,4 @@ const ParserApi api_h264d_parser = {
     .callback = h264d_callback,
 };
 
+MPP_PARSER_API_REGISTER(mpp_h264d);

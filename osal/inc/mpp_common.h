@@ -20,7 +20,7 @@
 #define MPP_MIN3(a,b,c)         MPP_MIN(MPP_MIN(a,b),c)
 #define MPP_MIN4(a, b, c, d)    MPP_MIN((a), MPP_MIN3((b), (c), (d)))
 
-#define MPP_DIV(a, b)           ((b) ? (a) / (b) : (a))
+#define MPP_DIV(a, b)           (((b) != 0) ? (a) / (b) : (a))
 
 #define MPP_CLIP3(l, h, v)      ((v) < (l) ? (l) : ((v) > (h) ? (h) : (v)))
 #define MPP_SIGN(a)             ((a) < (0) ? (-1) : (1))
@@ -231,6 +231,13 @@ RK_U32 mpp_align_128_odd_plus_64(RK_U32 val);
 RK_U32 mpp_align_wxh2yuv420(RK_U32 val);
 RK_U32 mpp_align_wxh2yuv422(RK_U32 val);
 RK_U32 mpp_align_wxh2yuv444(RK_U32 val);
+
+// Clip a signed integer to the range [0, 2^n - 1]
+RK_U32 mpp_clip_uint_pow2(RK_S32 val, RK_S32 n);
+// Divide an unsigned integer x by 2^n and round to nearest integer
+RK_U64 mpp_round_pow2(RK_U64 x, RK_U16 n);
+// Divide a signed integer x by 2^n and round to nearest integer
+RK_S64 mpp_round_pow2_signed(RK_S64 x, RK_U16 n);
 
 #ifdef __cplusplus
 }

@@ -7,14 +7,12 @@
 
 #include <string.h>
 
-#include "rk_mpi.h"
-
 #include "mpp_env.h"
 #include "mpp_mem.h"
 #include "mpp_debug.h"
 #include "mpp_common.h"
 
-#include "mpi_impl.h"
+#include "mpp_sys.h"
 #include "mpp_info.h"
 
 RK_U32 mpi_debug = 0;
@@ -435,6 +433,8 @@ MPP_RET mpp_create(MppCtx *ctx, MppApi **mpi)
         p->check    = p;
         *ctx = p;
         *mpi = p->api;
+
+        mpp_sys_attach(p);
     } while (0);
 
     show_mpp_version();
@@ -481,6 +481,8 @@ MPP_RET mpp_destroy(MppCtx ctx)
         ret = check_mpp_ctx(p);
         if (ret)
             return ret;
+
+        mpp_sys_detach(p);
 
         if (p->ctx)
             mpp_ctx_destroy(p->ctx);
@@ -530,16 +532,16 @@ typedef struct {
 static MppFrameFormatInfo color_list[] = {
     { MPP_FMT_YUV420SP,         "YUV420SP,      NV12"   },
     { MPP_FMT_YUV420SP_10BIT,   "YUV420SP-10bit"        },
-    { MPP_FMT_YUV422SP,         "YUV422SP,      NV24"   },
+    { MPP_FMT_YUV422SP,         "YUV422SP,      NV16"   },
     { MPP_FMT_YUV422SP_10BIT,   "YUV422SP-10bit"        },
     { MPP_FMT_YUV420P,          "YUV420P,       I420"   },
     { MPP_FMT_YUV420SP_VU,      "YUV420SP,      NV21"   },
     { MPP_FMT_YUV422P,          "YUV422P,       422P"   },
-    { MPP_FMT_YUV422SP_VU,      "YUV422SP,      NV42"   },
+    { MPP_FMT_YUV422SP_VU,      "YUV422SP,      NV61"   },
     { MPP_FMT_YUV422_YUYV,      "YUV422-YUYV,   YUY2"   },
     { MPP_FMT_YUV422_UYVY,      "YUV422-UYVY,   UYVY"   },
     { MPP_FMT_YUV400,           "YUV400-Y8,     Y800"   },
-    { MPP_FMT_YUV444SP,         "YUV444SP"              },
+    { MPP_FMT_YUV444SP,         "YUV444SP,      NV24"   },
     { MPP_FMT_YUV444P,          "YUV444P"               },
 
     { MPP_FMT_RGB565,           "RGB565"                },

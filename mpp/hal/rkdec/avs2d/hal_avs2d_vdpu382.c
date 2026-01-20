@@ -247,7 +247,7 @@ static void avs2d_refine_rcb_size(VdpuRcbInfo *rcb_info,
     rcb_info[RCB_INTER_COL].size = 0;
 
     /* RCB_INTRA_ROW */
-    rcb_bits = width * ((chroma_fmt_idc ? 1 : 0) + 1) * 11;
+    rcb_bits = width * (((chroma_fmt_idc != 0) ? 1 : 0) + 1) * 11;
     rcb_info[RCB_INTRA_ROW].size = MPP_RCB_BYTES(rcb_bits);
 
     /* RCB_DBLK_ROW */
@@ -288,7 +288,7 @@ static void hal_avs2d_rcb_info_update(void *hal, Vdpu382Avs2dRegSet *hw_regs)
     RK_S32 width = p_hal->syntax.pp.pic_width_in_luma_samples;
     RK_S32 height = p_hal->syntax.pp.pic_height_in_luma_samples;
     RK_S32 i = 0;
-    RK_S32 loop = p_hal->fast_mode ? MPP_ARRAY_ELEMS(reg_ctx->reg_buf) : 1;
+    RK_S32 loop = (p_hal->fast_mode != 0) ? MPP_ARRAY_ELEMS(reg_ctx->reg_buf) : 1;
 
     reg_ctx->rcb_buf_size = vdpu382_get_rcb_buf_size(reg_ctx->rcb_info, width, height);
     avs2d_refine_rcb_size(reg_ctx->rcb_info, hw_regs, width, height, (void *)&p_hal->syntax);
@@ -483,7 +483,7 @@ MPP_RET hal_avs2d_vdpu382_init(void *hal, MppHalCfg *cfg)
     //!< malloc buffers
     reg_ctx->shph_dat = mpp_calloc(RK_U8, AVS2_RKV_SHPH_SIZE);
     reg_ctx->scalist_dat = mpp_calloc(RK_U8, AVS2_RKV_SCALIST_SIZE);
-    loop = p_hal->fast_mode ? MPP_ARRAY_ELEMS(reg_ctx->reg_buf) : 1;
+    loop = (p_hal->fast_mode != 0) ? MPP_ARRAY_ELEMS(reg_ctx->reg_buf) : 1;
     FUN_CHECK(ret = mpp_buffer_get(p_hal->buf_group, &reg_ctx->bufs, AVS2_ALL_TBL_BUF_SIZE(loop)));
     reg_ctx->bufs_fd = mpp_buffer_get_fd(reg_ctx->bufs);
     reg_ctx->bufs_ptr = mpp_buffer_get_ptr(reg_ctx->bufs);
@@ -650,7 +650,7 @@ MPP_RET hal_avs2d_vdpu382_gen_regs(void *hal, HalTaskInfo *task)
     // set rcb
     {
         hal_avs2d_rcb_info_update(p_hal, regs);
-        vdpu382_setup_rcb(&regs->common_addr, p_hal->dev, p_hal->fast_mode ?
+        vdpu382_setup_rcb(&regs->common_addr, p_hal->dev, (p_hal->fast_mode != 0) ?
                           reg_ctx->rcb_buf[task->dec.reg_index] : reg_ctx->rcb_buf[0],
                           reg_ctx->rcb_info);
 
@@ -694,21 +694,21 @@ static MPP_RET hal_avs2d_vdpu382_dump_reg_write(void *hal, Vdpu382Avs2dRegSet *r
         fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", i, 0);
 
     for (i = 0; i < sizeof(Vdpu382RegCommon) / sizeof(RK_U32); i++)
-        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + OFFSET_COMMON_REGS / sizeof(RK_U32)),
+        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + VDPU382_OFF_COMMON_REGS / sizeof(RK_U32)),
                 ((RK_U32 *)&regs->common)[i]);
 
     for (i = 0; i < 63 - 32; i++)
         fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", i + 33, 0);
 
     for (i = 0; i < sizeof(Vdpu382RegAvs2dParam) / sizeof(RK_U32); i++)
-        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + OFFSET_CODEC_PARAMS_REGS / sizeof(RK_U32)),
+        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + VDPU382_OFF_CODEC_PARAMS_REGS / sizeof(RK_U32)),
                 ((RK_U32 *)&regs->avs2d_param)[i]);
 
     for (i = 0; i < 127 - 112; i++)
         fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", i + 113, 0);
 
     for (i = 0; i < sizeof(Vdpu382RegCommonAddr) / sizeof(RK_U32); i++)
-        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + OFFSET_COMMON_ADDR_REGS / sizeof(RK_U32)),
+        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + VDPU382_OFF_COMMON_ADDR_REGS / sizeof(RK_U32)),
                 ((RK_U32 *)&regs->common_addr)[i]);
 
     for (i = 0; i < 159 - 142; i++)
@@ -716,21 +716,21 @@ static MPP_RET hal_avs2d_vdpu382_dump_reg_write(void *hal, Vdpu382Avs2dRegSet *r
 
 
     for (i = 0; i < sizeof(Vdpu382RegAvs2dAddr) / sizeof(RK_U32); i++ )
-        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + OFFSET_CODEC_ADDR_REGS / sizeof(RK_U32)),
+        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + VDPU382_OFF_CODEC_ADDR_REGS / sizeof(RK_U32)),
                 ((RK_U32 *)&regs->avs2d_addr)[i]);
 
     for (i = 0; i < 223 - 197; i++)
         fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", i + 198, 0);
 
     for (i = 0; i < sizeof(Vdpu382RegIrqStatus) / sizeof(RK_U32); i++ )
-        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + OFFSET_INTERRUPT_REGS / sizeof(RK_U32)),
+        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + VDPU382_OFF_INTERRUPT_REGS / sizeof(RK_U32)),
                 ((RK_U32 *)&regs->irq_status)[i]);
 
     for (i = 0; i < 255 - 237; i++)
         fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", i + 238, 0);
 
     for (i = 0; i < sizeof(Vdpu382RegStatistic) / sizeof(RK_U32); i++ )
-        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + OFFSET_STATISTIC_REGS / sizeof(RK_U32)),
+        fprintf(fp_reg, "Write reg[%03d] : 0x%08x\n", (RK_U32)(i + VDPU382_OFF_STATISTIC_REGS / sizeof(RK_U32)),
                 ((RK_U32 *)&regs->statistic)[i]);
 
     fclose(fp_reg);
@@ -774,7 +774,7 @@ MPP_RET hal_avs2d_vdpu382_start(void *hal, HalTaskInfo *task)
     }
 
     reg_ctx = (Avs2dRkvRegCtx *)p_hal->reg_ctx;
-    regs = p_hal->fast_mode ? reg_ctx->reg_buf[task->dec.reg_index].regs : reg_ctx->regs;
+    regs = (p_hal->fast_mode != 0) ? reg_ctx->reg_buf[task->dec.reg_index].regs : reg_ctx->regs;
     dev = p_hal->dev;
 
     p_hal->frame_no++;
@@ -785,7 +785,7 @@ MPP_RET hal_avs2d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &regs->common;
         wr_cfg.size = sizeof(regs->common);
-        wr_cfg.offset = OFFSET_COMMON_REGS;
+        wr_cfg.offset = VDPU382_OFF_COMMON_REGS;
 
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
 
@@ -796,7 +796,7 @@ MPP_RET hal_avs2d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &regs->avs2d_param;
         wr_cfg.size = sizeof(regs->avs2d_param);
-        wr_cfg.offset = OFFSET_CODEC_PARAMS_REGS;
+        wr_cfg.offset = VDPU382_OFF_CODEC_PARAMS_REGS;
 
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
 
@@ -807,7 +807,7 @@ MPP_RET hal_avs2d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &regs->common_addr;
         wr_cfg.size = sizeof(regs->common_addr);
-        wr_cfg.offset = OFFSET_COMMON_ADDR_REGS;
+        wr_cfg.offset = VDPU382_OFF_COMMON_ADDR_REGS;
 
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
 
@@ -818,7 +818,7 @@ MPP_RET hal_avs2d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &regs->avs2d_addr;
         wr_cfg.size = sizeof(regs->avs2d_addr);
-        wr_cfg.offset = OFFSET_CODEC_ADDR_REGS;
+        wr_cfg.offset = VDPU382_OFF_CODEC_ADDR_REGS;
 
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
 
@@ -829,7 +829,7 @@ MPP_RET hal_avs2d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &regs->statistic;
         wr_cfg.size = sizeof(regs->statistic);
-        wr_cfg.offset = OFFSET_STATISTIC_REGS;
+        wr_cfg.offset = VDPU382_OFF_STATISTIC_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
 
         if (ret) {
@@ -839,7 +839,7 @@ MPP_RET hal_avs2d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         rd_cfg.reg = &regs->irq_status;
         rd_cfg.size = sizeof(regs->irq_status);
-        rd_cfg.offset = OFFSET_INTERRUPT_REGS;
+        rd_cfg.offset = VDPU382_OFF_INTERRUPT_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_RD, &rd_cfg);
 
         if (ret) {
@@ -849,7 +849,7 @@ MPP_RET hal_avs2d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         rd_cfg.reg = &regs->avs2d_param;
         rd_cfg.size = sizeof(regs->avs2d_param);
-        rd_cfg.offset = OFFSET_CODEC_PARAMS_REGS;
+        rd_cfg.offset = VDPU382_OFF_CODEC_PARAMS_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_RD, &rd_cfg);
 
         if (ret) {
@@ -859,7 +859,7 @@ MPP_RET hal_avs2d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         rd_cfg.reg = &regs->statistic;
         rd_cfg.size = sizeof(regs->statistic);
-        rd_cfg.offset = OFFSET_STATISTIC_REGS;
+        rd_cfg.offset = VDPU382_OFF_STATISTIC_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_RD, &rd_cfg);
 
         if (ret) {
@@ -907,7 +907,7 @@ MPP_RET hal_avs2d_vdpu382_wait(void *hal, HalTaskInfo *task)
 
     INP_CHECK(ret, NULL == p_hal);
     reg_ctx = (Avs2dRkvRegCtx *)p_hal->reg_ctx;
-    p_regs = p_hal->fast_mode ? reg_ctx->reg_buf[task->dec.reg_index].regs : reg_ctx->regs;
+    p_regs = (p_hal->fast_mode != 0) ? reg_ctx->reg_buf[task->dec.reg_index].regs : reg_ctx->regs;
 
     if ((task->dec.flags.parse_err || task->dec.flags.ref_err) &&
         !p_hal->cfg->base.disable_error) {

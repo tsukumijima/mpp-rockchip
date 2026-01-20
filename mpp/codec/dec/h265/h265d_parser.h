@@ -42,21 +42,6 @@
 #include "h265_syntax.h"
 #include "h2645d_sei.h"
 
-extern RK_U32 h265d_debug;
-
-#define H265D_DBG_FUNCTION          (0x00000001)
-#define H265D_DBG_VPS               (0x00000002)
-#define H265D_DBG_SPS               (0x00000004)
-#define H265D_DBG_PPS               (0x00000008)
-#define H265D_DBG_SLICE_HDR         (0x00000010)
-#define H265D_DBG_SEI               (0x00000020)
-#define H265D_DBG_GLOBAL            (0x00000040)
-#define H265D_DBG_REF               (0x00000080)
-#define H265D_DBG_TIME              (0x00000100)
-
-
-#define h265d_dbg(flag, fmt, ...) mpp_dbg(h265d_debug, flag, fmt, ## __VA_ARGS__)
-
 #define MAX_FRAME_SIZE 2048000
 
 typedef struct ShortTermRPS {
@@ -719,5 +704,7 @@ void mpp_hevc_unref_frame(HEVCContext *s, HEVCFrame *frame, RK_S32 flags);
 void mpp_hevc_pps_free(RK_U8 *data);
 
 void mpp_hevc_fill_dynamic_meta(HEVCContext *s, const RK_U8 *data, RK_U32 size, RK_U32 hdr_fmt);
+
+MPP_RET h265d_flush(void *ctx);
 
 #endif /* H265D_PAESER_H */

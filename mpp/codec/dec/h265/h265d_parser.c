@@ -25,14 +25,14 @@
 #include "mpp_packet_impl.h"
 #include "rk_hdr_meta_com.h"
 
+#include "mpp_parser.h"
+#include "h265d_debug.h"
 #include "h265d_parser.h"
 #include "h265d_syntax.h"
-#include "h265d_api.h"
 #include "h2645d_sei.h"
 
 #define START_CODE 0x000001 ///< start_code_prefix_one_3bytes
 
-RK_U32 h265d_debug;
 #ifdef dump
 FILE *fp = NULL;
 #endif
@@ -196,8 +196,8 @@ static void mpp_fetch_timestamp(SplitContext_t *s, RK_S32 off)
     s->dts = s->pts = -1;
     s->offset = 0;
     for (i = 0; i < MPP_PARSER_PTS_NB; i++) {
-        h265d_dbg(H265D_DBG_TIME, "s->cur_offset %lld s->cur_frame_offset[%d] %lld s->frame_offset %lld s->next_frame_offset %lld",
-                  s->cur_offset, i, s->cur_frame_offset[i], s->frame_offset, s->next_frame_offset);
+        h265d_dbg_pts("s->cur_offset %lld s->cur_frame_offset[%d] %lld s->frame_offset %lld s->next_frame_offset %lld",
+                      s->cur_offset, i, s->cur_frame_offset[i], s->frame_offset, s->next_frame_offset);
         if ( s->cur_offset + off >= s->cur_frame_offset[i]
              && (s->frame_offset < s->cur_frame_offset[i] ||
                  (!s->frame_offset && !s->next_frame_offset)) // first field/frame
@@ -229,8 +229,8 @@ static RK_S32 h265d_split_frame(void *sc,
         s->cur_frame_end[i] = s->cur_offset + buf_size;
         s->cur_frame_pts[i] = pts;
         s->cur_frame_dts[i] = dts;
-        h265d_dbg(H265D_DBG_TIME, "s->cur_frame_start_index = %d,cur_frame_offset = %lld,s->cur_frame_end = %lld pts = %lld",
-                  s->cur_frame_start_index, s->cur_frame_offset[i], s->cur_frame_end[i], pts);
+        h265d_dbg_pts("s->cur_frame_start_index = %d,cur_frame_offset = %lld,s->cur_frame_end = %lld pts = %lld",
+                      s->cur_frame_start_index, s->cur_frame_offset[i], s->cur_frame_end[i], pts);
     }
 
     if (s->fetch_timestamp) {
@@ -1096,12 +1096,12 @@ static RK_S32 hls_slice_header(HEVCContext *s)
     if (s->h265dctx->compare_info != NULL && sh->first_slice_in_pic_flag) {
         CurrentFameInf_t *info = (CurrentFameInf_t *)s->h265dctx->compare_info;
         SliceHeader *openhevc_sh = (SliceHeader *)&info->sh;
-        h265d_dbg(H265D_DBG_FUNCTION, "compare_sliceheader in");
+        h265d_dbg_func("compare_sliceheader in");
         if (compare_sliceheader(openhevc_sh, &s->sh) < 0) {
             mpp_log("compare sliceHeader with openhevc diff\n");
             mpp_assert(0);
         }
-        h265d_dbg(H265D_DBG_FUNCTION, "compare_sliceheader ok");
+        h265d_dbg_func("compare_sliceheader ok");
     }
 
     sh->slice_ctb_addr_rs = sh->slice_segment_addr;
@@ -1969,6 +1969,15 @@ static RK_S32 hevc_parser_extradata(HEVCContext *s)
     return ret;
 }
 
+MPP_RET h265d_flush(void *ctx)
+{
+    RK_S32 ret = 0;
+    do {
+        ret = mpp_hevc_output_frame(ctx, 1);
+    } while (ret);
+    return MPP_OK;
+}
+
 MPP_RET h265d_prepare(void *ctx, MppPacket pkt, HalDecTask *task)
 {
 
@@ -1998,7 +2007,7 @@ MPP_RET h265d_prepare(void *ctx, MppPacket pkt, HalDecTask *task)
     buf = (RK_U8 *)mpp_packet_get_pos(pkt);
     pts = mpp_packet_get_pts(pkt);
     dts = mpp_packet_get_dts(pkt);
-    h265d_dbg(H265D_DBG_TIME, "prepare get pts %lld", pts);
+    h265d_dbg_pts("prepare get pts %lld", pts);
     length = (RK_S32)mpp_packet_get_length(pkt);
 
     if (mpp_packet_get_flag(pkt) & MPP_PACKET_FLAG_EXTRA_DATA) {
@@ -2029,7 +2038,7 @@ MPP_RET h265d_prepare(void *ctx, MppPacket pkt, HalDecTask *task)
             length = split_size;
             s->checksum_buf = buf;  //check with openhevc
             s->checksum_buf_size = split_size;
-            h265d_dbg(H265D_DBG_TIME, "split frame get pts %lld", sc->pts);
+            h265d_dbg_pts("split frame get pts %lld", sc->pts);
             s->pts = sc->pts;
             s->dts = sc->dts;
             s->eos = (s->eos && (mpp_packet_get_length(pkt) < 4)) ? 1 : 0;
@@ -2331,15 +2340,6 @@ MPP_RET h265d_init(void *ctx, ParserCfg *parser_cfg)
     return 0;
 }
 
-MPP_RET h265d_flush(void *ctx)
-{
-    RK_S32 ret = 0;
-    do {
-        ret = mpp_hevc_output_frame(ctx, 1);
-    } while (ret);
-    return MPP_OK;
-}
-
 MPP_RET h265d_reset(void *ctx)
 {
     H265dContext_t *h265dctx = (H265dContext_t *)ctx;
@@ -2404,7 +2404,7 @@ MPP_RET h265d_callback(void *ctx, void *err_info)
     return MPP_OK;
 }
 
-const ParserApi api_h265d_parser = {
+const ParserApi mpp_h265d = {
     .name = "h265d_parse",
     .coding = MPP_VIDEO_CodingHEVC,
     .ctx_size = sizeof(H265dContext_t),
@@ -2419,3 +2419,4 @@ const ParserApi api_h265d_parser = {
     .callback = h265d_callback,
 };
 
+MPP_PARSER_API_REGISTER(mpp_h265d);

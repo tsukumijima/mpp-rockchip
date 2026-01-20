@@ -17,48 +17,6 @@
 #define VDPU384B_UNCMPS_HEADER_OFFSET(idx)   (VDPU384B_INFO_ELEM_SIZE * idx + VDPU384B_UNCMPS_HEADER_OFFSET_BASE)
 #define VDPU384B_INFO_BUF_SIZE(cnt)          (VDPU384B_INFO_ELEM_SIZE * cnt)
 
-#define SET_REF_HOR_VIRSTRIDE(regs, ref_index, value)\
-    do{ \
-        switch(ref_index){\
-        case 0: regs.reg83_ref0_hor_virstride = value; break;\
-        case 1: regs.reg86_ref1_hor_virstride = value; break;\
-        case 2: regs.reg89_ref2_hor_virstride = value; break;\
-        case 3: regs.reg92_ref3_hor_virstride = value; break;\
-        case 4: regs.reg95_ref4_hor_virstride = value; break;\
-        case 5: regs.reg98_ref5_hor_virstride = value; break;\
-        case 6: regs.reg101_ref6_hor_virstride = value; break;\
-        case 7: regs.reg104_ref7_hor_virstride = value; break;\
-        default: break;}\
-    }while(0)
-
-#define SET_REF_RASTER_UV_HOR_VIRSTRIDE(regs, ref_index, value)\
-    do{ \
-        switch(ref_index){\
-        case 0: regs.reg84_ref0_raster_uv_hor_virstride = value; break;\
-        case 1: regs.reg87_ref1_raster_uv_hor_virstride = value; break;\
-        case 2: regs.reg90_ref2_raster_uv_hor_virstride = value; break;\
-        case 3: regs.reg93_ref3_raster_uv_hor_virstride = value; break;\
-        case 4: regs.reg96_ref4_raster_uv_hor_virstride = value; break;\
-        case 5: regs.reg99_ref5_raster_uv_hor_virstride = value; break;\
-        case 6: regs.reg102_ref6_raster_uv_hor_virstride = value; break;\
-        case 7: regs.reg105_ref7_raster_uv_hor_virstride = value; break;\
-        default: break;}\
-    }while(0)
-
-#define SET_REF_VIRSTRIDE(regs, ref_index, value)\
-    do{ \
-        switch(ref_index){\
-        case 0: regs.reg85_ref0_virstride = value; break;\
-        case 1: regs.reg88_ref1_virstride = value; break;\
-        case 2: regs.reg91_ref2_virstride = value; break;\
-        case 3: regs.reg94_ref3_virstride = value; break;\
-        case 4: regs.reg97_ref4_virstride = value; break;\
-        case 5: regs.reg100_ref5_virstride = value; break;\
-        case 6: regs.reg103_ref6_virstride = value; break;\
-        case 7: regs.reg106_ref7_virstride = value; break;\
-        default: break;}\
-    }while(0)
-
 static MPP_RET hal_av1d_alloc_res(void *hal)
 {
     Av1dHalCtx *p_hal = (Av1dHalCtx *)hal;
@@ -129,7 +87,7 @@ __FAILED:
     return ret;
 }
 
-static MPP_RET vdpu384b_rcb_av1_calc_rcb_bufs(void *context, RK_U32 *total_size)
+static MPP_RET vdpu384b_av1d_rcb_calc(void *context, RK_U32 *total_size)
 {
     Vdpu38xRcbCtx *ctx = (Vdpu38xRcbCtx *)context;
     RK_FLOAT cur_bit_size = 0;
@@ -140,7 +98,7 @@ static MPP_RET vdpu384b_rcb_av1_calc_rcb_bufs(void *context, RK_U32 *total_size)
     RK_U32 on_tl_col = 0;
     Vdpu38xFmt rcb_fmt;
 
-    /* vdpu384b fix 10bit */
+    /* vdpu383/vdpu384a/vdpu384b fix 10bit */
     bit_depth = 10;
 
     vdpu38x_rcb_get_len(ctx, VDPU38X_RCB_IN_TILE_ROW, &in_tl_row);
@@ -159,7 +117,7 @@ static MPP_RET vdpu384b_rcb_av1_calc_rcb_bufs(void *context, RK_U32 *total_size)
      * Therefore, only strmd on-tile needs to be configured, and there is no need to
      * configure strmd in-tile.
      *
-     * Versions with issues: swan1126b (384a version), shark/robin (384b version).
+     * Versions with issues: swan1126b (384a), shark/robin (384b).
      */
     cur_bit_size = MPP_DIVUP(8, in_tl_row) * 100;
     vdpu38x_rcb_reg_info_update(ctx, RCB_STRMD_ON_ROW, 142, cur_bit_size);
@@ -225,72 +183,6 @@ static MPP_RET vdpu384b_rcb_av1_calc_rcb_bufs(void *context, RK_U32 *total_size)
     return MPP_OK;
 }
 
-static void vdpu384b_av1d_rcb_setup(Av1dHalCtx *p_hal, Vdpu38xRegSet *regs,
-                                    HalTaskInfo *task, DXVA_PicParams_AV1 *dxva)
-{
-    Vdpu38xAv1dRegCtx *reg_ctx = (Vdpu38xAv1dRegCtx *)p_hal->reg_ctx;
-    RK_U32 max_cnt = p_hal->fast_mode ? VDPU_FAST_REG_SET_CNT : 1;
-    MppBuffer rcb_buf;
-    RK_U32 i;
-
-    /* update rcb info */
-    {
-        RcbTileInfo tl_info;
-        MppFrame mframe;
-        MppFrameFormat mpp_fmt;
-        Vdpu38xFmt rcb_fmt;
-        RK_U32 uses_lr = 0;
-
-        mpp_buf_slot_get_prop(p_hal->slots, task->dec.output, SLOT_FRAME_PTR, &mframe);
-        mpp_fmt = mpp_frame_get_fmt(mframe);
-        rcb_fmt = vdpu38x_fmt_mpp2hal(mpp_fmt);
-        for (i = 0; i < (dxva->format.mono_chrome ? 1 : 3); i++)
-            uses_lr |= (dxva->loop_filter.frame_restoration_type[i] != AV1_RESTORE_NONE) ? 1 : 0;
-
-        vdpu38x_rcb_reset(reg_ctx->rcb_ctx);
-
-        /* update general info */
-        vdpu38x_rcb_set_pic_w(reg_ctx->rcb_ctx, dxva->width);
-        vdpu38x_rcb_set_pic_h(reg_ctx->rcb_ctx, dxva->height);
-        vdpu38x_rcb_set_fmt(reg_ctx->rcb_ctx, rcb_fmt);
-        vdpu38x_rcb_set_bit_depth(reg_ctx->rcb_ctx, dxva->bitdepth);
-
-        /* update cur spec info */
-        vdpu38x_rcb_set_lr_en(reg_ctx->rcb_ctx, uses_lr ? 1 : 0);
-        vdpu38x_rcb_set_upsc_en(reg_ctx->rcb_ctx, dxva->use_superres);
-
-        /* add tile info */
-        /* Simplify the calculation. */
-        tl_info.lt_x = 0;
-        tl_info.lt_y = 0;
-        tl_info.w = dxva->width;
-        tl_info.h = dxva->height;
-        vdpu38x_rcb_set_tile_dir(reg_ctx->rcb_ctx, 0);
-        vdpu38x_rcb_add_tile_info(reg_ctx->rcb_ctx, &tl_info);
-        vdpu38x_rcb_register_calc_handle(reg_ctx->rcb_ctx, vdpu384b_rcb_av1_calc_rcb_bufs);
-    }
-
-    vdpu38x_rcb_calc_exec(reg_ctx->rcb_ctx, &reg_ctx->rcb_buf_size);
-
-    for (i = 0; i < max_cnt; i++) {
-        rcb_buf = reg_ctx->rcb_bufs[i];
-
-        if (rcb_buf) {
-            mpp_buffer_put(rcb_buf);
-            reg_ctx->rcb_bufs[i] = NULL;
-        }
-        mpp_buffer_get(p_hal->buf_group, &rcb_buf, reg_ctx->rcb_buf_size);
-        reg_ctx->rcb_bufs[i] = rcb_buf;
-    }
-
-    rcb_buf = p_hal->fast_mode ? reg_ctx->rcb_bufs[task->dec.reg_index]
-              : reg_ctx->rcb_bufs[0];
-    vdpu38x_setup_rcb(reg_ctx->rcb_ctx, &regs->comm_addrs, p_hal->dev,
-                      rcb_buf);
-
-    return;
-}
-
 MPP_RET vdpu384b_av1d_gen_regs(void *hal, HalTaskInfo *task)
 {
     Av1dHalCtx *p_hal = (Av1dHalCtx *)hal;
@@ -347,49 +239,8 @@ MPP_RET vdpu384b_av1d_gen_regs(void *hal, HalTaskInfo *task)
     }
 #endif
 
-    /* set reg -> ctrl reg */
-    {
-        regs->ctrl_regs.reg8_dec_mode = 4; // av1
-        regs->ctrl_regs.reg9.collect_info_dis = 1;
-
-        regs->ctrl_regs.reg10.strmd_auto_gating_dis      = 0;
-        regs->ctrl_regs.reg10.inter_auto_gating_dis      = 0;
-        regs->ctrl_regs.reg10.intra_auto_gating_dis      = 0;
-        regs->ctrl_regs.reg10.transd_auto_gating_dis     = 0;
-        regs->ctrl_regs.reg10.recon_auto_gating_dis      = 0;
-        regs->ctrl_regs.reg10.filterd_auto_gating_dis    = 0;
-        regs->ctrl_regs.reg10.bus_auto_gating_dis        = 0;
-        regs->ctrl_regs.reg10.ctrl_auto_gating_dis       = 0;
-        regs->ctrl_regs.reg10.rcb_auto_gating_dis        = 0;
-        regs->ctrl_regs.reg10.err_prc_auto_gating_dis    = 0;
-        regs->ctrl_regs.reg10.cache_auto_gating_dis      = 0;
-
-        regs->ctrl_regs.reg11.rd_outstanding = 32;
-        regs->ctrl_regs.reg11.wr_outstanding = 250;
-
-        regs->ctrl_regs.reg13_core_timeout_threshold  = 0x3fffff;
-
-        regs->ctrl_regs.reg16.error_proc_disable     = 1;
-        regs->ctrl_regs.reg16.error_spread_disable   = 0;
-        regs->ctrl_regs.reg16.roi_error_ctu_cal_en   = 0;
-
-        regs->ctrl_regs.reg20_cabac_error_en_lowbits  = 0xffffffff;
-        regs->ctrl_regs.reg21_cabac_error_en_highbits = 0xffffffff;
-
-        regs->ctrl_regs.reg28.axi_perf_work_e = 1;
-        regs->ctrl_regs.reg28.axi_cnt_type    = 1;
-        regs->ctrl_regs.reg28.rd_latency_id   = 11;
-
-        regs->ctrl_regs.reg29.addr_align_type     = 1;
-        regs->ctrl_regs.reg29.ar_cnt_id_type      = 0;
-        regs->ctrl_regs.reg29.aw_cnt_id_type      = 1;
-        regs->ctrl_regs.reg29.ar_count_id         = 17;
-        regs->ctrl_regs.reg29.aw_count_id         = 0;
-        regs->ctrl_regs.reg29.rd_band_width_mode  = 0;
-
-        regs->ctrl_regs.reg30.axi_wr_qos = 0;
-        regs->ctrl_regs.reg30.axi_rd_qos = 0;
-    }
+    vdpu384b_init_ctrl_regs(regs, MPP_VIDEO_CodingAV1);
+    vdpu38x_setup_statistic(&regs->ctrl_regs);
 
     /* set reg -> pkt data */
     {
@@ -441,7 +292,8 @@ MPP_RET vdpu384b_av1d_gen_regs(void *hal, HalTaskInfo *task)
 #endif
     }
 
-    vdpu384b_av1d_rcb_setup(p_hal, regs, task, dxva);
+    vdpu38x_av1d_rcb_setup(p_hal, task, dxva, &regs->comm_addrs.rcb_regs,
+                           vdpu384b_av1d_rcb_calc);
 
     /* set reg -> para (stride, len) */
     {
@@ -496,7 +348,7 @@ MPP_RET vdpu384b_av1d_gen_regs(void *hal, HalTaskInfo *task)
         regs->comm_paras.reg81_error_ref_raster_uv_hor_virstride = regs->comm_paras.reg69_pp_m_uv_hor_stride;
         regs->comm_paras.reg82_error_ref_virstride = regs->comm_paras.reg70_pp_m_y_virstride;
 
-        for (i = 0; i < ALLOWED_REFS_PER_FRAME_EX; ++i) {
+        for (i = 0; i < AV1_REFS_PER_FRAME; ++i) {
             mapped_idx = dxva->ref_frame_idx[i];
             if (dxva->frame_refs[mapped_idx].Index != (CHAR)0xff && dxva->frame_refs[mapped_idx].Index != 0x7f) {
                 mpp_buf_slot_get_prop(p_hal->slots, dxva->frame_refs[mapped_idx].Index, SLOT_FRAME_PTR, &mframe);
@@ -506,18 +358,18 @@ MPP_RET vdpu384b_av1d_gen_regs(void *hal, HalTaskInfo *task)
                     y_virstride = hor_virstride * ver_virstride;
                     if (MPP_FRAME_FMT_IS_FBC(mpp_frame_get_fmt(mframe))) {
                         vdpu38x_get_fbc_off(mframe, &fbc_head_stride, &fbc_pld_stride, &fbc_offset);
-                        SET_REF_HOR_VIRSTRIDE(regs->comm_paras, mapped_idx, fbc_head_stride);
-                        SET_REF_RASTER_UV_HOR_VIRSTRIDE(regs->comm_paras, mapped_idx, fbc_pld_stride);
+                        regs->comm_paras.ref_stride[mapped_idx].hor_y_stride = fbc_head_stride;
+                        regs->comm_paras.ref_stride[mapped_idx].hor_uv_stride = fbc_pld_stride;
                     } else if (MPP_FRAME_FMT_IS_TILE(mpp_frame_get_fmt(mframe))) {
                         hor_virstride = MPP_ALIGN(hor_virstride * 6, 16);
                         y_virstride += y_virstride / 2;
-                        SET_REF_HOR_VIRSTRIDE(regs->comm_paras, mapped_idx, hor_virstride >> 4);
-                        SET_REF_RASTER_UV_HOR_VIRSTRIDE(regs->comm_paras, mapped_idx, hor_virstride >> 4);
-                        SET_REF_VIRSTRIDE(regs->comm_paras, mapped_idx, y_virstride >> 4);
+                        regs->comm_paras.ref_stride[mapped_idx].hor_y_stride = hor_virstride >> 4;
+                        regs->comm_paras.ref_stride[mapped_idx].hor_uv_stride = hor_virstride >> 4;
+                        regs->comm_paras.ref_stride[mapped_idx].y_stride = y_virstride >> 4;
                     } else {
-                        SET_REF_HOR_VIRSTRIDE(regs->comm_paras, mapped_idx, hor_virstride >> 4);
-                        SET_REF_RASTER_UV_HOR_VIRSTRIDE(regs->comm_paras, mapped_idx, hor_virstride >> 4);
-                        SET_REF_VIRSTRIDE(regs->comm_paras, mapped_idx, y_virstride >> 4);
+                        regs->comm_paras.ref_stride[mapped_idx].hor_y_stride = hor_virstride >> 4;
+                        regs->comm_paras.ref_stride[mapped_idx].hor_uv_stride = hor_virstride >> 4;
+                        regs->comm_paras.ref_stride[mapped_idx].y_stride = y_virstride >> 4;
                     }
                 }
             }
@@ -533,7 +385,7 @@ MPP_RET vdpu384b_av1d_gen_regs(void *hal, HalTaskInfo *task)
         regs->comm_addrs.reg168_decout_base = mpp_buffer_get_fd(mbuffer);
         regs->comm_addrs.reg192_payload_st_cur_base = mpp_buffer_get_fd(mbuffer);
 
-        for (i = 0; i < ALLOWED_REFS_PER_FRAME_EX; i++) {
+        for (i = 0; i < AV1_REFS_PER_FRAME; i++) {
             mapped_idx = dxva->ref_frame_idx[i];
             if (dxva->frame_refs[mapped_idx].Index != (CHAR)0xff && dxva->frame_refs[mapped_idx].Index != 0x7f) {
                 mpp_buf_slot_get_prop(p_hal->slots, dxva->frame_refs[mapped_idx].Index, SLOT_BUFFER, &mbuffer);
@@ -560,7 +412,7 @@ MPP_RET vdpu384b_av1d_gen_regs(void *hal, HalTaskInfo *task)
 #ifdef DUMP_VDPU38X_DATAS
         memset(mpp_buffer_get_ptr(mv_buf->buf[0]), 0, mpp_buffer_get_size(mv_buf->buf[0]));
 #endif
-        for (i = 0; i < NUM_REF_FRAMES; i++) {
+        for (i = 0; i < AV1_NUM_REF_FRAMES; i++) {
             if (dxva->frame_refs[i].Index != (CHAR)0xff && dxva->frame_refs[i].Index != 0x7f) {
                 mv_buf = hal_bufs_get_buf(ctx->colmv_bufs, dxva->frame_refs[i].Index);
                 regs->comm_addrs.reg217_232_colmv_ref_base[i] = mpp_buffer_get_fd(mv_buf->buf[0]);
@@ -649,7 +501,7 @@ MPP_RET vdpu384b_av1d_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &regs->ctrl_regs;
         wr_cfg.size = sizeof(regs->ctrl_regs);
-        wr_cfg.offset = OFFSET_CTRL_REGS;
+        wr_cfg.offset = VDPU38X_OFF_CTRL_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
         if (ret) {
             mpp_err_f("set register write failed %d\n", ret);
@@ -658,7 +510,7 @@ MPP_RET vdpu384b_av1d_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &regs->comm_paras;
         wr_cfg.size = sizeof(regs->comm_paras);
-        wr_cfg.offset = OFFSET_CODEC_PARAS_REGS;
+        wr_cfg.offset = VDPU38X_OFF_CODEC_PARAS_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
         if (ret) {
             mpp_err_f("set register write failed %d\n", ret);
@@ -667,7 +519,7 @@ MPP_RET vdpu384b_av1d_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &regs->comm_addrs;
         wr_cfg.size = sizeof(regs->comm_addrs);
-        wr_cfg.offset = OFFSET_COMMON_ADDR_REGS;
+        wr_cfg.offset = VDPU38X_OFF_COMMON_ADDR_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
         if (ret) {
             mpp_err_f("set register write failed %d\n", ret);
@@ -676,7 +528,7 @@ MPP_RET vdpu384b_av1d_start(void *hal, HalTaskInfo *task)
 
         rd_cfg.reg = &regs->ctrl_regs.reg15;
         rd_cfg.size = sizeof(regs->ctrl_regs.reg15);
-        rd_cfg.offset = OFFSET_INTERRUPT_REGS;
+        rd_cfg.offset = VDPU38X_OFF_INTERRUPT_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_RD, &rd_cfg);
         if (ret) {
             mpp_err_f("set register read failed %d\n", ret);
@@ -686,12 +538,12 @@ MPP_RET vdpu384b_av1d_start(void *hal, HalTaskInfo *task)
         if (hal_av1d_debug & AV1D_DBG_REG) {
             rd_cfg.reg = &regs->statistic_regs;
             rd_cfg.size = sizeof(regs->statistic_regs);
-            rd_cfg.offset = OFFSET_COM_STATISTIC_REGS_VDPU384B;
+            rd_cfg.offset = VDPU38X_OFF_COM_STATISTIC_REGS_VDPU384B;
             ret = mpp_dev_ioctl(dev, MPP_DEV_REG_RD, &rd_cfg);
         }
 
         /* rcb info for sram */
-        vdpu38x_set_rcbinfo(dev, (VdpuRcbInfo*)reg_ctx->rcb_buf_info);
+        vdpu38x_rcb_set_info(reg_ctx->rcb_ctx, dev);
 
         /* send request to hardware */
         ret = mpp_dev_ioctl(dev, MPP_DEV_CMD_SEND, NULL);

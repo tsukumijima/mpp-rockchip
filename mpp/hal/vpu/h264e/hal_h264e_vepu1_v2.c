@@ -373,9 +373,9 @@ static MPP_RET hal_h264e_vepu1_gen_regs_v2(void *hal, HalEncTask *task)
 
     RK_U32 scaler = MPP_MAX(1, 200 / (mb_w + mb_h));
     RK_U32 skip_penalty = MPP_MIN(255, h264_skip_sad_penalty[hw_mbrc->qp_init] * scaler);
-    RK_U32 overfill_r = (hw_prep->src_w & 0x0f) ?
+    RK_U32 overfill_r = ((hw_prep->src_w & 0x0f) != 0) ?
                         ((16 - (hw_prep->src_w & 0x0f)) / 4) : 0;
-    RK_U32 overfill_b = (hw_prep->src_h & 0x0f) ?
+    RK_U32 overfill_b = ((hw_prep->src_h & 0x0f) != 0) ?
                         (16 - (hw_prep->src_h & 0x0f)) : 0;
 
     val = VEPU_REG_SKIP_MACROBLOCK_PENALTY(skip_penalty)
@@ -654,7 +654,7 @@ static MPP_RET hal_h264e_vepu1_wait_v2(void *hal, HalEncTask *task)
 {
     HalH264eVepu1Ctx *ctx = (HalH264eVepu1Ctx *)hal;
     HalH264eVepuMbRc *hw_mbrc = &ctx->hw_mbrc;
-    H264NaluType type = task->rc_task->frm.is_idr ?  H264_NALU_TYPE_IDR : H264_NALU_TYPE_SLICE;
+    H264NaluType type = (task->rc_task->frm.is_idr != 0) ?  H264_NALU_TYPE_IDR : H264_NALU_TYPE_SLICE;
     MppPacket pkt = task->packet;
     RK_S32 offset = mpp_packet_get_length(pkt);
     MPP_RET ret = MPP_NOK;
@@ -736,4 +736,15 @@ const MppEncHalApi hal_h264e_vepu1 = {
     .part_start = NULL,
     .part_wait  = NULL,
     .ret_task   = hal_h264e_vepu1_ret_task_v2,
+    .client     = VPU_CLIENT_VEPU1,
+    .soc_type   = {
+        ROCKCHIP_SOC_RK3066,
+        ROCKCHIP_SOC_RK3188,
+        ROCKCHIP_SOC_RK3288,
+        ROCKCHIP_SOC_RK312X,
+        ROCKCHIP_SOC_RK3368,
+        ROCKCHIP_SOC_BUTT
+    },
 };
+
+MPP_ENC_HAL_API_REGISTER(hal_h264e_vepu1)

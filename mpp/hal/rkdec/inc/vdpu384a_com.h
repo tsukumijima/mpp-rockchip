@@ -218,100 +218,6 @@ typedef struct Vdpu384aCtrlReg_t {
 
 } Vdpu384aCtrlReg;
 
-typedef struct Vdpu384aRegCommonAddr_t {
-    /* SWREG128_STRM_BASE */
-    RK_U32 reg128_strm_base;
-
-    /* SWREG129_STREAM_BUF_ST_BASE */
-    RK_U32 reg129_stream_buf_st_base;
-
-    /* SWREG130_STREAM_BUF_END_BASE */
-    RK_U32 reg130_stream_buf_end_base;
-
-    /* SWREG131_GBL_BASE */
-    RK_U32 reg131_gbl_base;
-
-    /* SWREG132_SCANLIST_ADDR */
-    RK_U32 reg132_scanlist_addr;
-
-    /* SWREG133_SCL_BASE */
-    RK_U32 reg133_scale_down_base;
-
-    /* SWREG134_FGS_BASE */
-    RK_U32 reg134_fgs_base;
-
-    /* SWREG135_PP_M_DECOUT_BASE */
-    RK_U32 reg135_pp_m_decout_base;
-
-    /* SWREG136_PP_M_FBC32x8_PAYLOAD_OFFSET */
-    RK_U32 reg136_pp_m_fbc32x8_payload_offset;
-
-    RK_U32 reserve_reg137_139[3];
-
-    /* SWREG140_RCB_STRMD_ROW_OFFSET */
-    RK_U32 reg140_rcb_strmd_row_offset;
-
-    /* SWREG141_RCB_STRMD_ROW_LEN */
-    RK_U32 reg141_rcb_strmd_row_len;
-
-    /* SWREG142_RCB_STRMD_TILE_ROW_OFFSET */
-    RK_U32 reg142_rcb_strmd_tile_row_offset;
-
-    /* SWREG143_RCB_STRMD_TILE_ROW_LEN */
-    RK_U32 reg143_rcb_strmd_tile_row_len;
-
-    /* SWREG144_RCB_INTER_ROW_OFFSET */
-    RK_U32 reg144_rcb_inter_row_offset;
-
-    /* SWREG145_RCB_INTER_ROW_LEN */
-    RK_U32 reg145_rcb_inter_row_len;
-
-    /* SWREG146_RCB_INTER_TILE_ROW_OFFSET */
-    RK_U32 reg146_rcb_inter_tile_row_offset;
-
-    /* SWREG147_RCB_INTER_TILE_ROW_LEN */
-    RK_U32 reg147_rcb_inter_tile_row_len;
-
-    /* SWREG148_RCB_INTRA_ROW_OFFSET */
-    RK_U32 reg148_rcb_intra_row_offset;
-
-    /* SWREG149_RCB_INTRA_ROW_LEN */
-    RK_U32 reg149_rcb_intra_row_len;
-
-    /* SWREG150_RCB_INTRA_TILE_ROW_OFFSET */
-    RK_U32 reg150_rcb_intra_tile_row_offset;
-
-    /* SWREG151_RCB_INTRA_TILE_ROW_LEN */
-    RK_U32 reg151_rcb_intra_tile_row_len;
-
-    /* SWREG152_RCB_FILTERD_ROW_OFFSET */
-    RK_U32 reg152_rcb_filterd_row_offset;
-
-    /* SWREG153_RCB_FILTERD_ROW_LEN */
-    RK_U32 reg153_rcb_filterd_row_len;
-
-    RK_U32 reserve_reg154_155[2];
-
-    /* SWREG156_RCB_FILTERD_TILE_ROW_OFFSET */
-    RK_U32 reg156_rcb_filterd_tile_row_offset;
-
-    /* SWREG157_RCB_FILTERD_TILE_ROW_LEN */
-    RK_U32 reg157_rcb_filterd_tile_row_len;
-
-    /* SWREG158_RCB_FILTERD_TILE_COL_OFFSET */
-    RK_U32 reg158_rcb_filterd_tile_col_offset;
-
-    /* SWREG159_RCB_FILTERD_TILE_COL_LEN */
-    RK_U32 reg159_rcb_filterd_tile_col_len;
-
-    /* SWREG160_RCB_FILTERD_AV1_UPSCALE_TILE_COL_OFFSET */
-    RK_U32 reg160_rcb_filterd_av1_upscale_tile_col_offset;
-
-    /* SWREG161_RCB_FILTERD_AV1_UPSCALE_TILE_COL_LEN */
-    RK_U32 reg161_rcb_filterd_av1_upscale_tile_col_len;
-
-} Vdpu384aRegCommonAddr;
-
 typedef struct Vdpu384aRegCommParas_t {
     /* SWREG64_H26X_PARA */
     RK_U32 reg64_unused_bits;
@@ -435,6 +341,98 @@ typedef struct Vdpu384aRegCommParas_t {
     RK_U32 reg106_ref7_virstride;
 
 } Vdpu384aRegCommParas;
+
+typedef struct Vdpu384aRegCommonAddr_t {
+    /* SWREG128_STRM_BASE */
+    RK_U32 reg128_strm_base;
+
+    /* SWREG129_STREAM_BUF_ST_BASE */
+    RK_U32 reg129_stream_buf_st_base;
+
+    /* SWREG130_STREAM_BUF_END_BASE */
+    RK_U32 reg130_stream_buf_end_base;
+
+    /* SWREG131_GBL_BASE */
+    RK_U32 reg131_gbl_base;
+
+    /* SWREG132_SCANLIST_ADDR */
+    RK_U32 reg132_scanlist_addr;
+
+    /* SWREG133_SCL_BASE */
+    RK_U32 reg133_scale_down_base;
+
+    /* SWREG134_FGS_BASE */
+    RK_U32 reg134_fgs_base;
+
+    /* SWREG135_PP_M_DECOUT_BASE */
+    RK_U32 reg135_pp_m_decout_base;
+
+    /* SWREG136_PP_M_FBC32x8_PAYLOAD_OFFSET */
+    RK_U32 reg136_pp_m_fbc32x8_payload_offset;
+
+    RK_U32 reserve_reg137_139[3];
+
+    union {
+        Vdpu38xRcbRegSet rcb_regs;
+        struct {
+            RK_U32 reg140_rcb_strmd_row_offset;
+            RK_U32 reg141_rcb_strmd_row_len;
+            RK_U32 reg142_rcb_strmd_tile_row_offset;
+            RK_U32 reg143_rcb_strmd_tile_row_len;
+            RK_U32 reg144_rcb_inter_row_offset;
+            RK_U32 reg145_rcb_inter_row_len;
+            RK_U32 reg146_rcb_inter_tile_row_offset;
+            RK_U32 reg147_rcb_inter_tile_row_len;
+            RK_U32 reg148_rcb_intra_row_offset;
+            RK_U32 reg149_rcb_intra_row_len;
+            RK_U32 reg150_rcb_intra_tile_row_offset;
+            RK_U32 reg151_rcb_intra_tile_row_len;
+            RK_U32 reg152_rcb_filterd_row_offset;
+            RK_U32 reg153_rcb_filterd_row_len;
+            RK_U32 reg154_rcb_filterd_protect_row_offset; // deleted in vdpu384a
+            RK_U32 reg155_rcb_filterd_protect_row_len;    // deleted in vdpu384a
+            RK_U32 reg156_rcb_filterd_tile_row_offset;
+            RK_U32 reg157_rcb_filterd_tile_row_len;
+            RK_U32 reg158_rcb_filterd_tile_col_offset;
+            RK_U32 reg159_rcb_filterd_tile_col_len;
+            RK_U32 reg160_rcb_filterd_av1_upscale_tile_col_offset;
+            RK_U32 reg161_rcb_filterd_av1_upscale_tile_col_len;
+        };
+    };
+
+    RK_U32 reserve_reg162_167[6];
+
+    /* SWREG168_DECOUT_BASE */
+    RK_U32 reg168_dpb_decout_base;
+
+    /* SWREG169_ERROR_REF_BASE */
+    RK_U32 reg169_error_ref_base;
+
+    /* SWREG170_185_REF0_15_BASE */
+    RK_U32 reg170_185_ref_base[16];
+
+    RK_U32 reserve_reg186_191[6];
+
+    /* SWREG192_PAYLOAD_ST_CUR_BASE */
+    RK_U32 reg192_dpb_payload64x4_st_cur_base;
+
+    /* SWREG193_FBC_PAYLOAD_OFFSET */
+    RK_U32 reg193_dpb_fbc64x4_payload_offset;
+
+    /* SWREG194_PAYLOAD_ST_ERROR_REF_BASE */
+    RK_U32 reg194_payload_st_error_ref_base;
+
+    /* SWREG195_210_PAYLOAD_ST_REF0_15_BASE */
+    RK_U32 reg195_210_payload_st_ref_base[16];
+
+    RK_U32 reserve_reg211_215[5];
+
+    /* SWREG216_COLMV_CUR_BASE */
+    RK_U32 reg216_colmv_cur_base;
+
+    /* SWREG217_232_COLMV_REF0_15_BASE */
+    RK_U32 reg217_232_colmv_ref_base[16];
+} Vdpu384aRegCommonAddr;
 
 typedef struct Vdpu384aRegStatistic_t {
     /* SWREG256_IDLE_FLAG */
@@ -655,16 +653,20 @@ typedef struct Vdpu384aRegLlp_t {
 
 } Vdpu384aRegLlp;
 
+typedef struct Vdpu384aRegSet_t {
+    Vdpu384aRegVersion     reg_version;       /* 0 */
+    Vdpu384aCtrlReg        ctrl_regs;         /* 8-30 */
+    Vdpu384aRegCommParas   comm_paras;        /* 64-74, 80-106 */
+    Vdpu384aRegCommonAddr  comm_addrs;        /* 128-134, 140-161, 168-185, 192-210, 216-232 */
+    Vdpu384aRegStatistic   statistic_regs;    /* 256-295 */
+} Vdpu384aRegSet;
+
 #ifdef  __cplusplus
 extern "C" {
 #endif
 
-RK_S32 vdpu384a_get_rcb_buf_size(VdpuRcbInfo *info, RK_S32 width, RK_S32 height);
-RK_RET vdpu384a_check_rcb_buf_size(VdpuRcbInfo *info, RK_S32 width, RK_S32 height);
-void vdpu384a_setup_rcb(Vdpu384aRegCommonAddr *reg, MppDev dev, MppBuffer buf, VdpuRcbInfo *info);
+void vdpu384a_init_ctrl_regs(Vdpu384aRegSet *regs, MppCodingType codec_t);
 void vdpu384a_setup_statistic(Vdpu384aCtrlReg *com);
-void vdpu384a_afbc_align_calc(MppBufSlots slots, MppFrame frame, RK_U32 expand);
-RK_S32 vdpu384a_set_rcbinfo(MppDev dev, VdpuRcbInfo *rcb_info);
 void vdpu384a_setup_down_scale(MppFrame frame, MppDev dev, Vdpu384aCtrlReg *com, void* comParas);
 void vdpu384a_update_thumbnail_frame_info(MppFrame frame);
 

@@ -33,7 +33,7 @@
             { mpp_log("%s: line(%d), func(%s)", tag, __LINE__, __FUNCTION__); }\
     } while (0)
 
-static RK_U32 vp8d_debug = 0x0;
+extern RK_U32 vp8d_debug;
 
 static void vp8hwdBoolStart(vpBoolCoder_t *bit_ctx, RK_U8 *buffer, RK_U32 len)
 {
@@ -1052,15 +1052,15 @@ vp7_header_parser(VP8DParserContext_t *p, RK_U8 *pbase, RK_U32 size)
         p->nbrDctPartitions = 0;
     }
     p->qpYAc = (RK_S32)vp8hwdReadBits(bit_ctx, 7 );
-    p->qpYDc  = vp8hwdReadBits(bit_ctx, 1 )
+    p->qpYDc  = (vp8hwdReadBits(bit_ctx, 1) != 0)
                 ? (RK_S32)vp8hwdReadBits(bit_ctx, 7 ) : p->qpYAc;
-    p->qpY2Dc = vp8hwdReadBits(bit_ctx, 1 )
+    p->qpY2Dc = (vp8hwdReadBits(bit_ctx, 1) != 0)
                 ? (RK_S32)vp8hwdReadBits(bit_ctx, 7 ) : p->qpYAc;
-    p->qpY2Ac = vp8hwdReadBits(bit_ctx, 1 )
+    p->qpY2Ac = (vp8hwdReadBits(bit_ctx, 1) != 0)
                 ? (RK_S32)vp8hwdReadBits(bit_ctx, 7 ) : p->qpYAc;
-    p->qpChDc = vp8hwdReadBits(bit_ctx, 1 )
+    p->qpChDc = (vp8hwdReadBits(bit_ctx, 1) != 0)
                 ? (RK_S32)vp8hwdReadBits(bit_ctx, 7 ) : p->qpYAc;
-    p->qpChAc = vp8hwdReadBits(bit_ctx, 1 )
+    p->qpChAc = (vp8hwdReadBits(bit_ctx, 1) != 0)
                 ? (RK_S32)vp8hwdReadBits(bit_ctx, 7 ) : p->qpYAc;
     if (!p->keyFrame) {
         p->refreshGolden = vp8hwdDecodeBool128(bit_ctx);

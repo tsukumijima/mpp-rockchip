@@ -260,7 +260,7 @@ static MPP_RET hal_vp9d_vdpu382_init(void *hal, MppHalCfg *cfg)
     hw_ctx->last_segid_flag = 1;
 
     if (cfg->hal_fbc_adj_cfg) {
-        cfg->hal_fbc_adj_cfg->func = vdpu382_afbc_align_calc;
+        cfg->hal_fbc_adj_cfg->func = vdpu38x_afbc_align_calc;
         cfg->hal_fbc_adj_cfg->expand = 0;
     }
 
@@ -529,7 +529,7 @@ static MPP_RET hal_vp9d_vdpu382_gen_regs(void *hal, HalTaskInfo *task)
         }
         // colref poc
         vp9_hw_regs->vp9d_param.reg98.col_ref_poc =
-            hw_ctx->col_ref_poc ? hw_ctx->col_ref_poc : vp9_hw_regs->vp9d_param.reg65.cur_poc;
+            (hw_ctx->col_ref_poc != 0) ? hw_ctx->col_ref_poc : vp9_hw_regs->vp9d_param.reg65.cur_poc;
         if (pic_param->show_frame && !pic_param->show_existing_frame)
             hw_ctx->col_ref_poc = vp9_hw_regs->vp9d_param.reg65.cur_poc;
         // segment id ref poc
@@ -852,7 +852,7 @@ static MPP_RET hal_vp9d_vdpu382_gen_regs(void *hal, HalTaskInfo *task)
     {
         MppBuffer rcb_buf = NULL;
 
-        rcb_buf = p_hal->fast_mode ? hw_ctx->g_buf[task->dec.reg_index].rcb_buf : hw_ctx->rcb_buf;
+        rcb_buf = (p_hal->fast_mode != 0) ? hw_ctx->g_buf[task->dec.reg_index].rcb_buf : hw_ctx->rcb_buf;
         vdpu382_setup_rcb(&vp9_hw_regs->common_addr, p_hal->dev, rcb_buf, hw_ctx->rcb_info);
     }
 
@@ -937,7 +937,7 @@ static MPP_RET hal_vp9d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &hw_regs->common;
         wr_cfg.size = sizeof(hw_regs->common);
-        wr_cfg.offset = OFFSET_COMMON_REGS;
+        wr_cfg.offset = VDPU382_OFF_COMMON_REGS;
 
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
         if (ret) {
@@ -947,7 +947,7 @@ static MPP_RET hal_vp9d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &hw_regs->vp9d_param;
         wr_cfg.size = sizeof(hw_regs->vp9d_param);
-        wr_cfg.offset = OFFSET_CODEC_PARAMS_REGS;
+        wr_cfg.offset = VDPU382_OFF_CODEC_PARAMS_REGS;
 
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
         if (ret) {
@@ -957,7 +957,7 @@ static MPP_RET hal_vp9d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &hw_regs->common_addr;
         wr_cfg.size = sizeof(hw_regs->common_addr);
-        wr_cfg.offset = OFFSET_COMMON_ADDR_REGS;
+        wr_cfg.offset = VDPU382_OFF_COMMON_ADDR_REGS;
 
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
         if (ret) {
@@ -967,7 +967,7 @@ static MPP_RET hal_vp9d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &hw_regs->vp9d_addr;
         wr_cfg.size = sizeof(hw_regs->vp9d_addr);
-        wr_cfg.offset = OFFSET_CODEC_ADDR_REGS;
+        wr_cfg.offset = VDPU382_OFF_CODEC_ADDR_REGS;
 
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
         if (ret) {
@@ -977,7 +977,7 @@ static MPP_RET hal_vp9d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &hw_regs->statistic;
         wr_cfg.size = sizeof(hw_regs->statistic);
-        wr_cfg.offset = OFFSET_STATISTIC_REGS;
+        wr_cfg.offset = VDPU382_OFF_STATISTIC_REGS;
 
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
         if (ret) {
@@ -987,7 +987,7 @@ static MPP_RET hal_vp9d_vdpu382_start(void *hal, HalTaskInfo *task)
 
         rd_cfg.reg = &hw_regs->irq_status;
         rd_cfg.size = sizeof(hw_regs->irq_status);
-        rd_cfg.offset = OFFSET_INTERRUPT_REGS;
+        rd_cfg.offset = VDPU382_OFF_INTERRUPT_REGS;
 
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_RD, &rd_cfg);
         if (ret) {
@@ -1099,7 +1099,7 @@ static MPP_RET hal_vp9d_vdpu382_control(void *hal, MpiCmd cmd_type, void *param)
         MppFrameFormat fmt = mpp_frame_get_fmt((MppFrame)param);
 
         if (MPP_FRAME_FMT_IS_FBC(fmt)) {
-            vdpu382_afbc_align_calc(p_hal->slots, (MppFrame)param, 0);
+            vdpu38x_afbc_align_calc(p_hal->slots, (MppFrame)param, 0);
         } else {
             mpp_slots_set_prop(p_hal->slots, SLOTS_HOR_ALIGN, mpp_align_256_odd);
         }

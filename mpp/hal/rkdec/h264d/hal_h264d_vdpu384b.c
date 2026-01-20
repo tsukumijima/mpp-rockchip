@@ -226,52 +226,6 @@ static MPP_RET set_registers(H264dHalCtx_t *p_hal, Vdpu38xRegSet *regs, HalTaskI
     return MPP_OK;
 }
 
-static MPP_RET init_ctrl_regs(Vdpu38xRegSet *regs)
-{
-    Vdpu38xCtrlReg *ctrl_regs = &regs->ctrl_regs;
-
-    ctrl_regs->reg8_dec_mode = 1;  //!< h264
-    ctrl_regs->reg9.collect_info_dis = 1;
-
-    ctrl_regs->reg10.strmd_auto_gating_dis      = 0;
-    ctrl_regs->reg10.inter_auto_gating_dis      = 0;
-    ctrl_regs->reg10.intra_auto_gating_dis      = 0;
-    ctrl_regs->reg10.transd_auto_gating_dis     = 0;
-    ctrl_regs->reg10.recon_auto_gating_dis      = 0;
-    ctrl_regs->reg10.filterd_auto_gating_dis    = 0;
-    ctrl_regs->reg10.bus_auto_gating_dis        = 0;
-    ctrl_regs->reg10.ctrl_auto_gating_dis       = 0;
-    ctrl_regs->reg10.rcb_auto_gating_dis        = 0;
-    ctrl_regs->reg10.err_prc_auto_gating_dis    = 0;
-    ctrl_regs->reg10.cache_auto_gating_dis      = 0;
-
-    ctrl_regs->reg11.rd_outstanding = 32;
-    ctrl_regs->reg11.wr_outstanding = 250;
-
-    ctrl_regs->reg13_core_timeout_threshold = 0xffffff;
-
-    ctrl_regs->reg16.error_proc_disable = 1;
-    ctrl_regs->reg16.error_spread_disable = 0;
-    ctrl_regs->reg16.roi_error_ctu_cal_en = 0;
-
-    ctrl_regs->reg20_cabac_error_en_lowbits = 0xffffffff;
-    ctrl_regs->reg21_cabac_error_en_highbits = 0xfff3ffff;
-
-    /* performance */
-    ctrl_regs->reg28.axi_perf_work_e = 1;
-    ctrl_regs->reg28.axi_cnt_type = 1;
-    ctrl_regs->reg28.rd_latency_id = 11;
-
-    ctrl_regs->reg29.addr_align_type = 2;
-    ctrl_regs->reg29.ar_cnt_id_type = 0;
-    ctrl_regs->reg29.aw_cnt_id_type = 0;
-    ctrl_regs->reg29.ar_count_id = 0xa;
-    ctrl_regs->reg29.aw_count_id = 0;
-    ctrl_regs->reg29.rd_band_width_mode = 0;
-
-    return MPP_OK;
-}
-
 MPP_RET vdpu384b_h264d_init(void *hal, MppHalCfg *cfg)
 {
     MPP_RET ret = MPP_ERR_UNKNOW;
@@ -294,7 +248,7 @@ MPP_RET vdpu384b_h264d_init(void *hal, MppHalCfg *cfg)
     reg_ctx->offset_errinfo = VDPU384B_ERROR_INFO_OFFSET;
     for (i = 0; i < max_cnt; i++) {
         reg_ctx->reg_buf[i].regs = mpp_calloc(Vdpu38xRegSet, 1);
-        init_ctrl_regs(reg_ctx->reg_buf[i].regs);
+        vdpu384b_init_ctrl_regs(reg_ctx->reg_buf[i].regs, MPP_VIDEO_CodingAVC);
         reg_ctx->offset_spspps[i] = VDPU384B_SPSPPS_OFFSET(i);
         reg_ctx->offset_sclst[i] = VDPU384B_SCALING_LIST_OFFSET(i);
     }
@@ -326,7 +280,7 @@ __FAILED:
     return ret;
 }
 
-static MPP_RET vdpu384b_rcb_h264_calc_rcb_bufs(void *context, RK_U32 *total_size)
+static MPP_RET vdpu384b_h264d_rcb_calc(void *context, RK_U32 *total_size)
 {
     Vdpu38xRcbCtx *ctx = (Vdpu38xRcbCtx *)context;
     RK_FLOAT cur_bit_size = 0;
@@ -337,7 +291,7 @@ static MPP_RET vdpu384b_rcb_h264_calc_rcb_bufs(void *context, RK_U32 *total_size
     RK_U32 on_tl_col = 0;
     Vdpu38xFmt rcb_fmt;
 
-    /* vdpu384b fix 10bit */
+    /* vdpu383/vdpu384a/vdpu384b fix 10bit */
     bit_depth = 10;
 
     vdpu38x_rcb_get_len(ctx, VDPU38X_RCB_IN_TILE_ROW, &in_tl_row);
@@ -356,7 +310,7 @@ static MPP_RET vdpu384b_rcb_h264_calc_rcb_bufs(void *context, RK_U32 *total_size
      * Therefore, only strmd on-tile needs to be configured, and there is no need to
      * configure strmd in-tile.
      *
-     * Versions with issues: swan1126b (384a version), shark/robin (384b version).
+     * Versions with issues: rk3576(383), swan1126b (384a), shark/robin (384b).
      */
     if (ctx->pic_w > 4096)
         cur_bit_size = MPP_DIVUP(16, in_tl_row) * 158 * (1 + ctx->mbaff_flag);
@@ -417,83 +371,6 @@ static MPP_RET vdpu384b_rcb_h264_calc_rcb_bufs(void *context, RK_U32 *total_size
     *total_size = vdpu38x_rcb_get_total_size(ctx);
 
     return MPP_OK;
-}
-
-static void vdpu384b_h264d_rcb_setup(void *hal, Vdpu38xRegSet *regs, HalTaskInfo *task)
-{
-    H264dHalCtx_t *p_hal = (H264dHalCtx_t*)hal;
-    RK_U32 mbaff = p_hal->pp->MbaffFrameFlag;
-    RK_U32 bit_depth = p_hal->pp->bit_depth_luma_minus8 + 8;
-    RK_U32 chroma_format_idc = p_hal->pp->chroma_format_idc;
-    Vdpu3xxH264dRegCtx *ctx = (Vdpu3xxH264dRegCtx *)p_hal->reg_ctx;
-    RK_S32 width = MPP_ALIGN((p_hal->pp->wFrameWidthInMbsMinus1 + 1) << 4, 64);
-    RK_S32 height = MPP_ALIGN((p_hal->pp->wFrameHeightInMbsMinus1 + 1) << 4, 64);
-    MppBuffer rcb_buf;
-
-    if ( ctx->bit_depth != bit_depth ||
-         ctx->chroma_format_idc != chroma_format_idc ||
-         ctx->mbaff != mbaff ||
-         ctx->width != width ||
-         ctx->height != height) {
-        RK_U32 i;
-        RK_U32 loop = p_hal->fast_mode ? MPP_ARRAY_ELEMS(ctx->reg_buf) : 1;
-
-        /* update rcb info */
-        {
-            RcbTileInfo tl_info;
-            MppFrame mframe;
-            MppFrameFormat mpp_fmt;
-            Vdpu38xFmt rcb_fmt;
-
-            mpp_buf_slot_get_prop(p_hal->frame_slots, p_hal->pp->CurrPic.Index7Bits,
-                                  SLOT_FRAME_PTR, &mframe);
-            mpp_fmt = mpp_frame_get_fmt(mframe);
-            rcb_fmt = vdpu38x_fmt_mpp2hal(mpp_fmt);
-
-            vdpu38x_rcb_reset(ctx->rcb_ctx);
-
-            /* update general info */
-            vdpu38x_rcb_set_pic_w(ctx->rcb_ctx, width);
-            vdpu38x_rcb_set_pic_h(ctx->rcb_ctx, height);
-            vdpu38x_rcb_set_fmt(ctx->rcb_ctx, rcb_fmt);
-            vdpu38x_rcb_set_bit_depth(ctx->rcb_ctx, bit_depth);
-
-            /* update cur spec info */
-            vdpu38x_rcb_set_mbaff_flag(ctx->rcb_ctx, mbaff);
-
-            /* add tile info */
-            /* Simplify the calculation. */
-            tl_info.lt_x = 0;
-            tl_info.lt_y = 0;
-            tl_info.w = width;
-            tl_info.h = height;
-            vdpu38x_rcb_set_tile_dir(ctx->rcb_ctx, 0);
-            vdpu38x_rcb_add_tile_info(ctx->rcb_ctx, &tl_info);
-            vdpu38x_rcb_register_calc_handle(ctx->rcb_ctx, vdpu384b_rcb_h264_calc_rcb_bufs);
-        }
-
-        vdpu38x_rcb_calc_exec(ctx->rcb_ctx, &ctx->rcb_buf_size);
-        /* vdpu384b_check_rcb_buf_size(ctx->rcb_info, width, height); */
-        for (i = 0; i < loop; i++) {
-            rcb_buf = ctx->rcb_buf[i];
-
-            if (rcb_buf) {
-                mpp_buffer_put(rcb_buf);
-                ctx->rcb_buf[i] = NULL;
-            }
-            mpp_buffer_get(p_hal->buf_group, &rcb_buf, ctx->rcb_buf_size);
-            ctx->rcb_buf[i] = rcb_buf;
-        }
-        ctx->bit_depth      = bit_depth;
-        ctx->width          = width;
-        ctx->height         = height;
-        ctx->mbaff          = mbaff;
-        ctx->chroma_format_idc = chroma_format_idc;
-    }
-
-    rcb_buf = p_hal->fast_mode ? ctx->rcb_buf[task->dec.reg_index]
-              : ctx->rcb_buf[0];
-    vdpu38x_setup_rcb(ctx->rcb_ctx, &regs->comm_addrs, p_hal->dev, rcb_buf);
 }
 
 MPP_RET vdpu384b_h264d_gen_regs(void *hal, HalTaskInfo *task)
@@ -589,7 +466,7 @@ MPP_RET vdpu384b_h264d_gen_regs(void *hal, HalTaskInfo *task)
         regs->comm_addrs.reg132_scanlist_addr = 0;
     }
 
-    vdpu384b_h264d_rcb_setup(p_hal, regs, task);
+    vdpu38x_h264d_rcb_setup(p_hal, task, &regs->comm_addrs.rcb_regs, vdpu384b_h264d_rcb_calc);
     vdpu38x_setup_statistic(&regs->ctrl_regs);
     mpp_buffer_sync_end(ctx->bufs);
 
@@ -620,7 +497,7 @@ MPP_RET vdpu384b_h264d_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &regs->ctrl_regs;
         wr_cfg.size = sizeof(regs->ctrl_regs);
-        wr_cfg.offset = OFFSET_CTRL_REGS;
+        wr_cfg.offset = VDPU38X_OFF_CTRL_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
         if (ret) {
             mpp_err_f("set register write failed %d\n", ret);
@@ -629,7 +506,7 @@ MPP_RET vdpu384b_h264d_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &regs->comm_paras;
         wr_cfg.size = sizeof(regs->comm_paras);
-        wr_cfg.offset = OFFSET_CODEC_PARAS_REGS;
+        wr_cfg.offset = VDPU38X_OFF_CODEC_PARAS_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
         if (ret) {
             mpp_err_f("set register write failed %d\n", ret);
@@ -638,7 +515,7 @@ MPP_RET vdpu384b_h264d_start(void *hal, HalTaskInfo *task)
 
         wr_cfg.reg = &regs->comm_addrs;
         wr_cfg.size = sizeof(regs->comm_addrs);
-        wr_cfg.offset = OFFSET_COMMON_ADDR_REGS;
+        wr_cfg.offset = VDPU38X_OFF_COMMON_ADDR_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_WR, &wr_cfg);
         if (ret) {
             mpp_err_f("set register write failed %d\n", ret);
@@ -647,7 +524,7 @@ MPP_RET vdpu384b_h264d_start(void *hal, HalTaskInfo *task)
 
         rd_cfg.reg = &regs->ctrl_regs.reg15;
         rd_cfg.size = sizeof(regs->ctrl_regs.reg15);
-        rd_cfg.offset = OFFSET_INTERRUPT_REGS;
+        rd_cfg.offset = VDPU38X_OFF_INTERRUPT_REGS;
         ret = mpp_dev_ioctl(dev, MPP_DEV_REG_RD, &rd_cfg);
         if (ret) {
             mpp_err_f("set register read failed %d\n", ret);
@@ -657,12 +534,12 @@ MPP_RET vdpu384b_h264d_start(void *hal, HalTaskInfo *task)
         if (hal_h264d_debug & H264D_DBG_REG) {
             rd_cfg.reg = &regs->statistic_regs;
             rd_cfg.size = sizeof(regs->statistic_regs);
-            rd_cfg.offset = OFFSET_COM_STATISTIC_REGS_VDPU384B;
+            rd_cfg.offset = VDPU38X_OFF_COM_STATISTIC_REGS_VDPU384B;
             ret = mpp_dev_ioctl(dev, MPP_DEV_REG_RD, &rd_cfg);
         }
 
         /* rcb info for sram */
-        vdpu38x_set_rcbinfo(dev, (VdpuRcbInfo*)reg_ctx->rcb_info);
+        vdpu38x_rcb_set_info(reg_ctx->rcb_ctx, dev);
 
         /* send request to hardware */
         ret = mpp_dev_ioctl(dev, MPP_DEV_CMD_SEND, NULL);

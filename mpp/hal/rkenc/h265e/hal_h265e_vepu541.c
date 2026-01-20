@@ -69,7 +69,6 @@ typedef struct vepu541_h265_fbk_t {
 } vepu541_h265_fbk;
 
 typedef struct H265eV541HalContext_t {
-    MppEncHalApi        api;
     MppDev              dev;
     void                *regs;
     void                *l2_regs;
@@ -725,7 +724,7 @@ static MPP_RET
 vepu541_h265_set_patch_info(MppDev dev, H265eSyntax_new *syn, VepuFmt input_fmt, HalEncTask *task)
 {
     RK_U32 hor_stride = syn->pp.hor_stride;
-    RK_U32 ver_stride = syn->pp.ver_stride ? syn->pp.ver_stride : syn->pp.pic_height;
+    RK_U32 ver_stride = (syn->pp.ver_stride != 0) ? syn->pp.ver_stride : syn->pp.pic_height;
     RK_U32 frame_size = hor_stride * ver_stride;
     RK_U32 u_offset = 0, v_offset = 0;
     MPP_RET ret = MPP_OK;
@@ -1183,7 +1182,7 @@ static void vepu541_h265_set_slice_regs(H265eSyntax_new *syn, H265eV541RegSet *r
     regs->synt_sli1.sli_lp_fltr_acrs_sli  = syn->sp.sli_lp_fltr_acrs_sli;
     regs->synt_sli1.sli_dblk_fltr_dis     = syn->sp.sli_dblk_fltr_dis;
     regs->synt_sli1.dblk_fltr_ovrd_flg    = syn->sp.dblk_fltr_ovrd_flg;
-    regs->synt_sli1.sli_cb_qp_ofst        = syn->pp.pps_slice_chroma_qp_offsets_present_flag ?
+    regs->synt_sli1.sli_cb_qp_ofst        = (syn->pp.pps_slice_chroma_qp_offsets_present_flag != 0) ?
                                             syn->sp.sli_cb_qp_ofst : syn->pp.pps_cb_qp_offset;
     regs->synt_sli1.max_mrg_cnd           = syn->sp.max_mrg_cnd;
 
@@ -1537,10 +1536,10 @@ MPP_RET hal_h265e_v541_gen_regs(void *hal, HalEncTask *task)
     regs->int_en.wdg_en         = 0;
 
     regs->enc_rsl.pic_wd8_m1    = pic_width_align8 / 8 - 1;
-    regs->enc_rsl.pic_wfill     = (syn->pp.pic_width & 0x7)
+    regs->enc_rsl.pic_wfill     = ((syn->pp.pic_width & 0x7) != 0)
                                   ? (8 - (syn->pp.pic_width & 0x7)) : 0;
     regs->enc_rsl.pic_hd8_m1    = pic_height_align8 / 8 - 1;
-    regs->enc_rsl.pic_hfill     = (syn->pp.pic_height & 0x7)
+    regs->enc_rsl.pic_hfill     = ((syn->pp.pic_height & 0x7) != 0)
                                   ? (8 - (syn->pp.pic_height & 0x7)) : 0;
 
     regs->enc_pic.enc_stnd      = 1; //H265
@@ -1578,7 +1577,7 @@ MPP_RET hal_h265e_v541_gen_regs(void *hal, HalEncTask *task)
     regs->src_proc.src_mirr = 0;
     regs->src_proc.src_rot  = 0;
     regs->src_proc.txa_en   = 1;
-    regs->src_proc.afbcd_en = (MPP_FRAME_FMT_IS_FBC(syn->pp.mpp_format)) ? 1 : 0;
+    regs->src_proc.afbcd_en = (MPP_FRAME_FMT_IS_FBC(syn->pp.mpp_format) != 0) ? 1 : 0;
 
     if (!ctx->is_vepu540)
         vepu541_h265_set_patch_info(ctx->dev, syn, (VepuFmt)fmt->format, task);
@@ -2043,19 +2042,28 @@ MPP_RET hal_h265e_v541_ret_task(void *hal, HalEncTask *task)
 }
 
 const MppEncHalApi hal_h265e_vepu541 = {
-    "h265e_v541_v2",
-    MPP_VIDEO_CodingHEVC,
-    sizeof(H265eV541HalContext),
-    0,
-    hal_h265e_v541_init,
-    hal_h265e_v541_deinit,
-    hal_h265e_vepu54x_prepare,
-    hal_h265e_v541_get_task,
-    hal_h265e_v541_gen_regs,
-    hal_h265e_v54x_start,
-    hal_h265e_v541_wait,
-    NULL,
-    NULL,
-    hal_h265e_v541_ret_task,
+    .name       = "h265e_v541_v2",
+    .coding     = MPP_VIDEO_CodingHEVC,
+    .ctx_size   = sizeof(H265eV541HalContext),
+    .flag       = 0,
+    .init       = hal_h265e_v541_init,
+    .deinit     = hal_h265e_v541_deinit,
+    .prepare    = hal_h265e_vepu54x_prepare,
+    .get_task   = hal_h265e_v541_get_task,
+    .gen_regs   = hal_h265e_v541_gen_regs,
+    .start      = hal_h265e_v54x_start,
+    .wait       = hal_h265e_v541_wait,
+    .part_start = NULL,
+    .part_wait  = NULL,
+    .ret_task   = hal_h265e_v541_ret_task,
+    .client     = VPU_CLIENT_RKVENC,
+    .soc_type   = {
+        ROCKCHIP_SOC_RV1126,
+        ROCKCHIP_SOC_RK3566,
+        ROCKCHIP_SOC_RK3567,
+        ROCKCHIP_SOC_RK3568,
+        ROCKCHIP_SOC_BUTT
+    },
 };
 
+MPP_ENC_HAL_API_REGISTER(hal_h265e_vepu541)

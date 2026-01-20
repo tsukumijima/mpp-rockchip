@@ -108,13 +108,6 @@ else()
     message(STATUS "Please add this value near ${CMAKE_CURRENT_LIST_FILE}:${CMAKE_CURRENT_LIST_LINE}")
 endif()
 
-if(UNIX)
-    SET(PLATFORM_LIBS pthread)
-    if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-        SET(PLATFORM_LIBS ${PLATFORM_LIBS} rt)
-    endif()
-endif(UNIX)
-
 # ----------------------------------------------------------------------------
 # Compiler detection
 # ----------------------------------------------------------------------------
@@ -175,10 +168,6 @@ if(GCC)
         add_definitions(-fno-builtin-pow)
     endif()
 
-    # for libary linking
-    set(BEGIN_WHOLE_ARCHIVE -Wl,--whole-archive)
-    set(END_WHOLE_ARCHIVE -Wl,--no-whole-archive)
-
     option(ASAN_CHECK "enable Address Sanitizer (Asan)" OFF)
     if(ASAN_CHECK)
         add_definitions(-fsanitize=address -static-libasan -g)
@@ -186,6 +175,10 @@ if(GCC)
         set(ASAN_BIN dl rt m)
     endif(ASAN_CHECK)
 endif(GCC)
+
+# for libary linking
+set(BEGIN_WHOLE_ARCHIVE -Wl,--whole-archive)
+set(END_WHOLE_ARCHIVE -Wl,--no-whole-archive)
 
 # ----------------------------------------------------------------------------
 # Create git version information
@@ -269,6 +262,8 @@ configure_file(
 find_package(PkgConfig)
 include(GNUInstallDirs)
 pkg_search_module(PTHREAD pthread)
+
+find_package(Threads)
 
 # ----------------------------------------------------------------------------
 # Set Warning as Error

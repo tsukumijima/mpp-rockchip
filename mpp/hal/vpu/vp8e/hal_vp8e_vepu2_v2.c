@@ -43,7 +43,7 @@ static MPP_RET vp8e_vpu_frame_start(void *hal)
 
     memset(regs, 0, sizeof(Vp8eVepu2Reg_t));
 
-    regs->sw109.val = hw_cfg->irq_disable ? (regs->sw109.val | 0x0100) :
+    regs->sw109.val = (hw_cfg->irq_disable != 0) ? (regs->sw109.val | 0x0100) :
                       (regs->sw109.val & 0xfeff);
 
     //((0 & (255)) << 24) | ((0 & (255)) << 16) | ((16 & (63)) << 8) | ((0 & (1)) << 2) | ((0 & (1)) << 1);
@@ -378,7 +378,7 @@ static MPP_RET hal_vp8e_vepu2_start_v2(void *hal, HalEncTask *task)
     MPP_RET ret = MPP_OK;
     HalVp8eCtx *ctx = (HalVp8eCtx *)hal;
 
-    if (VP8E_DBG_HAL_DUMP_REG & vp8e_hal_debug) {
+    if (VP8E_DBG_HAL_DUMP_REG & hal_vp8e_debug) {
         RK_U32 i = 0;
         RK_U32 *tmp = (RK_U32 *)ctx->regs;
 
@@ -495,7 +495,7 @@ static MPP_RET hal_vp8e_vepu2_get_task_v2(void *hal, HalEncTask *task)
         }
     }
 
-    ctx->frame_type = task->rc_task->frm.is_intra ? VP8E_FRM_KEY : VP8E_FRM_P;
+    ctx->frame_type = (task->rc_task->frm.is_intra != 0) ? VP8E_FRM_KEY : VP8E_FRM_P;
 
     if (!ctx->cfg->vp8.disable_ivf && !ctx->ivf_hdr_rdy) {
         RK_U8 *p_out = mpp_buffer_get_ptr(task->output);
@@ -531,4 +531,25 @@ const MppEncHalApi hal_vp8e_vepu2 = {
     .part_start = NULL,
     .part_wait  = NULL,
     .ret_task   = hal_vp8e_vepu2_ret_task_v2,
+    .client     = VPU_CLIENT_VEPU2,
+    .soc_type   = {
+        ROCKCHIP_SOC_RK3128H,
+        ROCKCHIP_SOC_RK3399,
+        ROCKCHIP_SOC_RK3328,
+        ROCKCHIP_SOC_RK3228,
+        ROCKCHIP_SOC_RK3228H,
+        ROCKCHIP_SOC_RK3229,
+        ROCKCHIP_SOC_RV1108,
+        ROCKCHIP_SOC_RV1109,
+        ROCKCHIP_SOC_RV1126,
+        ROCKCHIP_SOC_RK3326,
+        ROCKCHIP_SOC_RK1808,
+        ROCKCHIP_SOC_RK3566,
+        ROCKCHIP_SOC_RK3567,
+        ROCKCHIP_SOC_RK3568,
+        ROCKCHIP_SOC_RK3588,
+        ROCKCHIP_SOC_BUTT
+    },
 };
+
+MPP_ENC_HAL_API_REGISTER(hal_vp8e_vepu2)

@@ -138,7 +138,6 @@ MPP_RET mpp_dec_proc_cfg(MppDecImpl *dec, MpiCmd cmd, void *param)
         ret = mpp_dec_set_cfg_by_cmd(dec->cfg_obj, cmd, param);
         mpp_dec_update_cfg(dec);
         mpp_dec_check_fbc_cap(dec);
-        dec->cfg->base.change = 0;
     } break;
     case MPP_DEC_QUERY: {
         MppDecQueryCfg *query = (MppDecQueryCfg *)param;
@@ -538,11 +537,12 @@ MPP_RET mpp_dec_init(MppDec *dec, MppDecInitCfg *cfg)
     p->dec_cb.cmd = DEC_PARSER_CALLBACK;
 
     do {
-        ret = mpp_buf_slot_init(&frame_slots);
+        ret = mpp_buf_slot_init(&p->frame_slots);
         if (ret) {
             mpp_err_f("could not init frame buffer slot\n");
             break;
         }
+        frame_slots = p->frame_slots;
 
         MppCbCtx cb_ctx = {
             mpp_dec_callback_slot,
@@ -551,12 +551,14 @@ MPP_RET mpp_dec_init(MppDec *dec, MppDecInitCfg *cfg)
         };
 
         mpp_buf_slot_set_callback(frame_slots, &cb_ctx);
+        mpp_buf_slot_set_dec_cfg(frame_slots, p->cfg_obj);
 
-        ret = mpp_buf_slot_init(&packet_slots);
+        ret = mpp_buf_slot_init(&p->packet_slots);
         if (ret) {
             mpp_err_f("could not init packet buffer slot\n");
             break;
         }
+        packet_slots = p->packet_slots;
 
         MppHalCfg hal_cfg = {
             MPP_CTX_DEC,
@@ -573,11 +575,13 @@ MPP_RET mpp_dec_init(MppDec *dec, MppDecInitCfg *cfg)
 
         memset(&hal_fbc_adj_cfg, 0, sizeof(hal_fbc_adj_cfg));
 
-        ret = mpp_hal_init(&hal, &hal_cfg);
+        ret = mpp_hal_init(&p->hal, &hal_cfg);
         if (ret) {
             mpp_err_f("could not init hal\n");
             break;
         }
+
+        hal = p->hal;
 
         if (hal_fbc_adj_cfg.func)
             mpp_slots_set_prop(frame_slots, SLOTS_HAL_FBC_ADJ, &hal_fbc_adj_cfg);
@@ -585,7 +589,7 @@ MPP_RET mpp_dec_init(MppDec *dec, MppDecInitCfg *cfg)
         support_fast_mode = hal_cfg.support_fast_mode;
 
         if (dec_cfg->base.fast_parse && support_fast_mode) {
-            hal_task_count = dec_cfg->status.hal_task_count ?
+            hal_task_count = (dec_cfg->status.hal_task_count != 0) ?
                              dec_cfg->status.hal_task_count : 3;
         } else {
             dec_cfg->base.fast_parse = 0;
@@ -594,11 +598,12 @@ MPP_RET mpp_dec_init(MppDec *dec, MppDecInitCfg *cfg)
         dec_cfg->status.hal_support_fast_mode = support_fast_mode;
         dec_cfg->status.hal_task_count = hal_task_count;
 
-        ret = hal_task_group_init(&tasks, TASK_BUTT, hal_task_count, sizeof(HalDecTask));
+        ret = hal_task_group_init(&p->tasks, TASK_BUTT, hal_task_count, sizeof(HalDecTask));
         if (ret) {
             mpp_err_f("hal_task_group_init failed ret %d\n", ret);
             break;
         }
+        tasks = p->tasks;
 
         mpp_buf_slot_setup(packet_slots, hal_task_count);
         mpp_slots_set_prop(packet_slots, SLOTS_CODING_TYPE, &coding);
@@ -617,11 +622,12 @@ MPP_RET mpp_dec_init(MppDec *dec, MppDecInitCfg *cfg)
             p->hw_info,
         };
 
-        ret = mpp_parser_init(&parser, &parser_cfg);
+        ret = mpp_parser_init(&p->parser, &parser_cfg);
         if (ret) {
             mpp_err_f("could not init parser\n");
             break;
         }
+        parser = p->parser;
 
         ret = hal_info_init(&p->hal_info, MPP_CTX_DEC, coding);
         if (ret) {
@@ -630,13 +636,7 @@ MPP_RET mpp_dec_init(MppDec *dec, MppDecInitCfg *cfg)
         }
 
         p->coding = coding;
-        p->parser = parser;
-        p->hal    = hal;
-        p->tasks  = tasks;
-        p->frame_slots  = frame_slots;
-        p->packet_slots = packet_slots;
-
-        p->statistics_en = (mpp_dec_debug & MPP_DEC_DBG_TIMING) ? 1 : 0;
+        p->statistics_en = ((mpp_dec_debug & MPP_DEC_DBG_TIMING) != 0) ? 1 : 0;
 
         for (i = 0; i < DEC_TIMING_BUTT; i++) {
             p->clocks[i] = mpp_clock_get(timing_str[i]);
@@ -712,8 +712,10 @@ MPP_RET mpp_dec_deinit(MppDec ctx)
     }
 
     for (i = 0; i < DEC_TIMING_BUTT; i++) {
-        mpp_clock_put(dec->clocks[i]);
-        dec->clocks[i] = NULL;
+        if (dec->clocks[i]) {
+            mpp_clock_put(dec->clocks[i]);
+            dec->clocks[i] = NULL;
+        }
     }
 
     if (dec->hal_info) {
@@ -978,4 +980,11 @@ MPP_RET mpp_dec_set_cfg_by_cmd(MppDecCfg cfg, MpiCmd cmd, void *param)
     }
 
     return ret;
+}
+
+MppDecCfg mpp_dec_to_cfg(MppDec ctx)
+{
+    MppDecImpl *dec = (MppDecImpl *)ctx;
+
+    return (NULL != dec) ? dec->cfg_obj : NULL;
 }

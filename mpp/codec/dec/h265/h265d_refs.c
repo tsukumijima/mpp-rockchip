@@ -29,8 +29,8 @@
 
 #include "mpp_compat_impl.h"
 
+#include "h265d_debug.h"
 #include "h265d_parser.h"
-#include "h265d_api.h"
 
 #define HEVC_ALIGN(value, x)   ((value + (x-1)) & (~(x-1)))
 
@@ -315,7 +315,7 @@ RK_S32 mpp_hevc_frame_rps(HEVCContext *s)
     /* add the long refs */
     for (i = 0; long_rps && i < long_rps->nb_refs; i++) {
         int poc  = long_rps->poc[i];
-        int list = long_rps->used[i] ? LT_CURR : LT_FOLL;
+        int list = (long_rps->used[i] != 0) ? LT_CURR : LT_FOLL;
 
         ret = add_candidate_ref(s, &rps[list], poc, HEVC_FRAME_FLAG_LONG_REF, LT_FOLL != list);
         if (ret < 0)
